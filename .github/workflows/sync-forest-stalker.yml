@@ -1,0 +1,38 @@
+name: Sync Forest Stalker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-forest-stalker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout aippy
+        uses: actions/checkout@v4
+
+      - name: Copy Forest Stalker V4
+        run: |
+          set -e
+          mkdir -p games/forest-stalker
+          curl -L --fail --retry 3 https://raw.githubusercontent.com/alnaimistudio/boltsite/main/deer-hunter/index.html -o games/forest-stalker/index.html
+          curl -L --fail --retry 3 https://raw.githubusercontent.com/alnaimistudio/boltsite/main/deer-hunter/style.css -o games/forest-stalker/style.css
+          curl -L --fail --retry 3 https://raw.githubusercontent.com/alnaimistudio/boltsite/main/deer-hunter/game.js -o games/forest-stalker/game.js
+
+      - name: Commit synced game
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add games/forest-stalker/index.html games/forest-stalker/style.css games/forest-stalker/game.js
+          if git diff --cached --quiet; then
+            echo "Forest Stalker is already up to date."
+            exit 0
+          fi
+          git commit -m "Add Forest Stalker V4 game files"
+          git push
