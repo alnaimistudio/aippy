@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify final game link
+      - name: Verify final game link and assets
         id: browser
         continue-on-error: true
         env:
@@ -33,9 +33,19 @@ jobs:
             const page=await context.newPage();
             const pageErrors=[];
             page.on('pageerror',e=>pageErrors.push(e.message));
-            const response=await page.goto(process.env.URL,{waitUntil:'domcontentloaded',timeout:60000});
+            const response=await page.goto(process.env.URL,{waitUntil:'networkidle',timeout:90000});
             if(!response||!response.ok()) throw new Error('HTTP '+(response&&response.status()));
             await page.locator('#play').waitFor({state:'visible',timeout:30000});
+            const fish=await page.evaluate(async()=>{
+              const entries=Object.entries(window.FISH_ASSETS_DATA||{}), bad=[];
+              for(const [id,src] of entries){
+                const img=new Image(); img.src=src;
+                try{await img.decode(); if(!img.naturalWidth||!img.naturalHeight)bad.push(id+':size')}
+                catch(e){bad.push(id+':decode')}
+              }
+              return {count:entries.length,bad};
+            });
+            if(fish.count<10||fish.bad.length) throw new Error('fish '+JSON.stringify(fish));
             await page.locator('#play').click();
             await page.locator('#act').waitFor({state:'visible',timeout:10000});
             if((await page.locator('#act').textContent()).trim()!=='CAST') throw new Error('CAST not ready');
@@ -43,13 +53,18 @@ jobs:
             await page.locator('#shop.open').waitFor({state:'visible',timeout:10000});
             const cards=await page.locator('#shopGrid .shopCard').count();
             if(cards<8) throw new Error('rod cards='+cards);
+            const previews=page.locator('#shopGrid .shopCard img');
+            for(let i=0;i<Math.min(cards,8);i++){
+              const ok=await previews.nth(i).evaluate(img=>img.complete&&img.naturalWidth>0);
+              if(!ok)throw new Error('rod preview '+i+' failed');
+            }
             await page.locator('#closeShop').click();
             await page.locator('#act').click();
             await page.waitForTimeout(1500);
             const action=(await page.locator('#act').textContent()).trim();
             if(!['GUIDE','REEL'].includes(action)) throw new Error('cast state='+action);
             if(pageErrors.length) throw new Error('pageerror: '+pageErrors.join(' | '));
-            console.log('LINK_OK=1 CARDS='+cards+' ACTION='+action+' URL='+process.env.URL);
+            console.log('LINK_OK=1 FISH='+fish.count+' RODS='+cards+' ACTION='+action+' URL='+process.env.URL);
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
@@ -60,7 +75,7 @@ jobs:
           URL: https://alnaimistudio.github.io/aippy/games/deep-catch/
         run: |
           mkdir -p _deployment
-          printf '{"url":"%s","browser_gameplay":"%s","run_id":"%s"}\n' "$URL" "$RESULT" "$GITHUB_RUN_ID" > _deployment/deep-catch-link.json
+          printf '{"url":"%s","browser_gameplay":"%s","fish_asset_check":"%s","run_id":"%s"}\n' "$URL" "$RESULT" "$RESULT" "$GITHUB_RUN_ID" > _deployment/deep-catch-link.json
           git pull --rebase
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
