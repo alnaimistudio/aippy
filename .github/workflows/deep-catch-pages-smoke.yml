@@ -1,0 +1,158 @@
+name: Deep Catch GitHub Pages Smoke Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deep-catch-pages-smoke.yml'
+      - '_deployment/deep-catch-pages-trigger.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deep-catch-pages-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Public GitHub Pages HTTP check
+        id: http
+        continue-on-error: true
+        shell: bash
+        env:
+          URL: https://alnaimistudio.github.io/aippy/games/deep-catch/
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in {1..30}; do
+            code=$(curl -L -sS -o /tmp/deep-pages.html -w '%{http_code}' --max-time 30 "$URL" || true)
+            echo "attempt=$i http=$code bytes=$(wc -c </tmp/deep-pages.html 2>/dev/null || echo 0)"
+            if [ "$code" = "200" ] && grep -q 'Deep Catch' /tmp/deep-pages.html && grep -q 'id="shopGrid"' /tmp/deep-pages.html; then
+              ok=1
+              break
+            fi
+            sleep 3
+          done
+          test "$ok" = "1"
+          grep -q 'YELLOWFIN JACK' /tmp/deep-pages.html
+          grep -q 'LEVIATHAN WHALE' /tmp/deep-pages.html
+          grep -q 'INFERNO FANGFISH' /tmp/deep-pages.html
+          grep -q 'Shadow Reaper' /tmp/deep-pages.html
+          echo "PUBLIC_HTTP_OK=1"
+
+      - name: Mobile browser gameplay test on final URL
+        id: browser
+        continue-on-error: true
+        shell: bash
+        env:
+          URL: https://alnaimistudio.github.io/aippy/games/deep-catch/
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pw-deep-pages
+          npm install --prefix /tmp/pw-deep-pages --no-save playwright@1.55.0 >/tmp/pw-npm.log 2>&1
+          /tmp/pw-deep-pages/node_modules/.bin/playwright install chromium >/tmp/pw-install.log 2>&1
+          NODE_PATH=/tmp/pw-deep-pages/node_modules node <<'JS'
+          const { chromium } = require('playwright');
+          const url=process.env.URL;
+          async function run(){
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+            const page=await context.newPage();
+            const pageErrors=[]; const consoleErrors=[]; const failed=[];
+            page.on('pageerror',e=>pageErrors.push(e.message));
+            page.on('console',m=>{if(m.type()==='error'&&!m.text().toLowerCase().includes('favicon'))consoleErrors.push(m.text())});
+            page.on('requestfailed',r=>{if(!r.url().includes('favicon'))failed.push(r.url()+' :: '+(r.failure()?.errorText||'failed'))});
+            let response=null;
+            for(let i=1;i<=20;i++){
+              try{response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});}catch(e){}
+              if(response&&response.ok())break;
+              await page.waitForTimeout(3000);
+            }
+            if(!response||!response.ok())throw new Error('Final URL HTTP failure');
+            await page.locator('#play').waitFor({state:'visible',timeout:60000});
+            const assets=await page.evaluate(async()=>{
+              async function check(map){
+                const list=Object.entries(map||{}),bad=[];
+                for(const [k,src] of list){
+                  if(typeof src!=='string'||!src.startsWith('data:image/')){bad.push(k+':source');continue}
+                  const im=new Image(); im.src=src;
+                  try{await im.decode();if(!im.naturalWidth)bad.push(k+':size')}catch(e){bad.push(k+':decode')}
+                }
+                return {count:list.length,bad};
+              }
+              return {fish:await check(window.FISH_ASSETS_DATA),rods:await check(window.ROD_ASSETS)};
+            });
+            if(assets.fish.count<10||assets.fish.bad.length)throw new Error('Fish assets '+JSON.stringify(assets.fish));
+            if(assets.rods.count<8||assets.rods.bad.length)throw new Error('Rod assets '+JSON.stringify(assets.rods));
+            await page.locator('#play').click();
+            await page.locator('#act').waitFor({state:'visible',timeout:15000});
+            if((await page.locator('#act').textContent()).trim()!=='CAST')throw new Error('CAST not ready');
+            await page.locator('#shopQuick').click();
+            await page.locator('#shop.open').waitFor({state:'visible',timeout:10000});
+            const cards=await page.locator('#shopGrid .shopCard').count();
+            if(cards<8)throw new Error('Rod cards='+cards);
+            const firstPreview=page.locator('#shopGrid .shopCard img').first();
+            await firstPreview.waitFor({state:'visible',timeout:10000});
+            const previewOK=await firstPreview.evaluate(img=>img.complete&&img.naturalWidth>0);
+            if(!previewOK)throw new Error('Rod preview image not decoded');
+            await page.locator('#closeShop').click();
+            await page.locator('#act').click();
+            await page.waitForTimeout(1500);
+            const action=(await page.locator('#act').textContent()).trim();
+            if(!['GUIDE','REEL'].includes(action))throw new Error('Cast state='+action);
+            const canvas=page.locator('#c');
+            for(const pos of [{x:100,y:430},{x:280,y:510},{x:190,y:610}]){await canvas.click({position:pos});await page.waitForTimeout(250)}
+            await page.waitForTimeout(1000);
+            const score=Number((await page.locator('#score').textContent()).trim());
+            const coins=Number((await page.locator('#coins').textContent()).trim());
+            if(!Number.isFinite(score)||!Number.isFinite(coins))throw new Error('HUD values invalid');
+            if(pageErrors.length)throw new Error('pageerror: '+pageErrors.join(' | '));
+            if(consoleErrors.length)throw new Error('console: '+consoleErrors.join(' | '));
+            if(failed.length)throw new Error('requestfailed: '+failed.join(' | '));
+            await page.screenshot({path:'/tmp/deep-catch-final.png',fullPage:true});
+            console.log('VERIFY_OK=public-pages FISH='+assets.fish.count+' RODS='+assets.rods.count+' CARDS='+cards+' ACTION='+action+' SCORE='+score+' COINS='+coins);
+            console.log('FINAL_URL='+url);
+            await browser.close();
+          }
+          run().catch(e=>{console.error(e);process.exit(1)});
+          JS
+
+      - name: Record final verification
+        if: always()
+        shell: bash
+        env:
+          HTTP_RESULT: ${{ steps.http.outcome }}
+          BROWSER_RESULT: ${{ steps.browser.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p _deployment
+          cat > _deployment/deep-catch-pages.json <<EOF
+          {
+            "game": "Deep Catch",
+            "url": "https://alnaimistudio.github.io/aippy/games/deep-catch/",
+            "run_id": "${GITHUB_RUN_ID}",
+            "public_http": "$HTTP_RESULT",
+            "browser_gameplay": "$BROWSER_RESULT",
+            "checked_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          git pull --rebase
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add _deployment/deep-catch-pages.json
+          git commit -m 'chore: record Deep Catch Pages verification [skip ci]' || exit 0
+          git push
+
+      - name: Final gate
+        if: always()
+        shell: bash
+        run: |
+          test '${{ steps.http.outcome }}' = 'success'
+          test '${{ steps.browser.outcome }}' = 'success'
