@@ -1,0 +1,46 @@
+name: Deploy Forest Stalker V5.5 Safely
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'games/forest-stalker/game55.b64'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  decode-verify-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Decode and syntax check
+        run: |
+          base64 -d games/forest-stalker/game55.b64 > games/forest-stalker/game55.js
+          node --check games/forest-stalker/game55.js
+          grep -q "version:'5.5'" games/forest-stalker/game55.js
+      - name: Commit verified source to main
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add games/forest-stalker/game55.js games/forest-stalker/index.html
+          git commit -m "Verify Forest Stalker V5.5 source" || true
+          git push origin HEAD:main
+      - name: Deploy verified source to gh-pages
+        run: |
+          cp games/forest-stalker/game55.js /tmp/game55.js
+          cp games/forest-stalker/index.html /tmp/index.html
+          git fetch origin gh-pages
+          git worktree add /tmp/pages origin/gh-pages
+          cp /tmp/game55.js /tmp/pages/games/forest-stalker/game55.js
+          cp /tmp/index.html /tmp/pages/games/forest-stalker/index.html
+          cd /tmp/pages
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add games/forest-stalker/game55.js games/forest-stalker/index.html
+          git commit -m "Deploy verified Forest Stalker V5.5" || true
+          git push origin HEAD:gh-pages
