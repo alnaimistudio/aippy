@@ -24,115 +24,33 @@
 @media(orientation:landscape) and (max-height:600px){#app::after{content:'Rotate back to portrait for the best experience.';position:absolute;inset:0;display:grid;place-items:center;background:#03141fe8;z-index:30;text-align:center;font-weight:900;padding:30px}.overlay,.modalScreen{display:none!important}}
 
 </style>
-  <!-- Deep Catch repaired fish artwork: 2026-08-18 -->
+  <!-- Deep Catch repaired fish artwork and complete rod pack: 2026-08-18 -->
 </head>
 <body>
 <div id="app">
   <canvas id="c" width="450" height="800"></canvas>
   <div id="gameRod" class="gameRod" aria-hidden="true"><img id="gameRodImg" alt="" /></div>
-
   <div id="hud">
-    <div class="topRow">
-      <div class="leftStats">
-        <div class="pill"><small>SCORE</small><b id="score">0</b></div>
-        <div class="pill mini"><small>STREAK</small><b id="combo">x0</b></div>
-      </div>
-      <div class="rightStats">
-        <button id="soundBtn" class="soundBtn" aria-label="Toggle sound">♪</button>
-        <div class="pill coins"><small>COINS</small><b id="coins">0</b></div>
-        <div class="pill mini"><small>BEST</small><b id="best">0</b></div>
-      </div>
-    </div>
-
-    <div class="rodBadge" id="rodBadge">
-      <img id="rodThumb" alt="Equipped rod" />
-      <div class="rodBadgeText">
-        <small id="rodTier">COMMON</small>
-        <b id="rodName">Driftwood Branch</b>
-        <span id="rodPassive">Starter Balance</span>
-      </div>
-    </div>
-
-    <div id="toast"><b id="toastTitle">FISH ON!</b><span id="toastSub">SNAPPER</span></div>
-    <div id="hint">DRAG TO GUIDE THE LURE</div>
-
-    <div id="fight">
-      <div class="fightHead"><small>LINE TENSION</small><b id="fishName">SNAPPER</b></div>
-      <div class="meter tensionMeter"><div class="safeMark" id="safeMark"><span class="safeLabel">SWEET SPOT</span></div><div class="needle" id="tensionNeedle"></div></div>
-      <div class="subLabels"><span>FISH ENERGY</span><span>LANDING</span></div>
-      <div class="staminaRow"><div class="stam"><i id="staminaFill"></i></div><div class="stam catchProg"><i id="catchFill"></i></div></div>
-    </div>
-
-    <button id="act">CAST</button>
-    <div id="depth">DEPTH<br><span id="depthM">0m</span></div>
-    <button id="shopQuick" class="shopQuick">RODS</button>
+    <div class="topRow"><div class="leftStats"><div class="pill"><small>SCORE</small><b id="score">0</b></div><div class="pill mini"><small>STREAK</small><b id="combo">x0</b></div></div><div class="rightStats"><button id="soundBtn" class="soundBtn" aria-label="Toggle sound">♪</button><div class="pill coins"><small>COINS</small><b id="coins">0</b></div><div class="pill mini"><small>BEST</small><b id="best">0</b></div></div></div>
+    <div class="rodBadge" id="rodBadge"><img id="rodThumb" alt="Equipped rod" /><div class="rodBadgeText"><small id="rodTier">COMMON</small><b id="rodName">Driftwood Branch</b><span id="rodPassive">Starter Balance</span></div></div>
+    <div id="toast"><b id="toastTitle">FISH ON!</b><span id="toastSub">SNAPPER</span></div><div id="hint">DRAG TO GUIDE THE LURE</div>
+    <div id="fight"><div class="fightHead"><small>LINE TENSION</small><b id="fishName">SNAPPER</b></div><div class="meter tensionMeter"><div class="safeMark" id="safeMark"><span class="safeLabel">SWEET SPOT</span></div><div class="needle" id="tensionNeedle"></div></div><div class="subLabels"><span>FISH ENERGY</span><span>LANDING</span></div><div class="staminaRow"><div class="stam"><i id="staminaFill"></i></div><div class="stam catchProg"><i id="catchFill"></i></div></div></div>
+    <button id="act">CAST</button><div id="depth">DEPTH<br><span id="depthM">0m</span></div><button id="shopQuick" class="shopQuick">RODS</button>
   </div>
-
-  <div id="intro" class="modalScreen visible">
-    <div class="panel introPanel">
-      <div class="logoMark">🎣</div>
-      <h1>DEEP<br>CATCH</h1>
-      <div class="tag">Catch fish, earn coins and build a rod collection that changes how every fight feels.</div>
-      <div class="tips">
-        <div class="tip"><strong>↔</strong>Drag the lure</div>
-        <div class="tip"><strong>●</strong>Hold & release</div>
-      </div>
-      <div class="currentRodCard" id="introRodCard">
-        <img id="introRod" alt="Current rod" />
-        <div>
-          <small id="introTier">COMMON ROD</small>
-          <b id="introRodName">Driftwood Branch</b>
-          <span id="introPassive">Starter Balance</span>
-        </div>
-      </div>
-      <button class="primary" id="play">START FISHING</button>
-      <button class="ghost" id="openShop">ROD SHOP</button>
-      <div class="subline">8 catches complete a trip · equipment, fish art and coins save automatically · V3.2</div>
-    </div>
-  </div>
-
-  <div id="shop" class="overlay">
-    <div class="sheet shopSheet">
-      <div class="sheetHead">
-        <div>
-          <small>EQUIPMENT</small>
-          <h2>Rod Shop</h2>
-          <p>Upgrade your style, not just your stats.</p>
-        </div>
-        <div class="headRight">
-          <div class="coinBubble">🪙 <span id="shopCoins">0</span></div>
-          <button class="iconBtn" id="closeShop" aria-label="Close shop">✕</button>
-        </div>
-      </div>
-      <div class="shopLegend"><span>POWER</span><span>CONTROL</span><span>LUCK</span><span>REWARD</span></div>
-      <div id="shopGrid" class="shopGrid"></div>
-    </div>
-  </div>
-
-  <div id="summary" class="overlay">
-    <div class="sheet summarySheet">
-      <div class="summaryTop">
-        <small>TRIP COMPLETE</small>
-        <h2 id="sumTitle">Great Session!</h2>
-        <p id="sumSub">You packed the cooler with fish.</p>
-      </div>
-      <div class="summaryRod"><img id="sumRodImg" alt="Equipped rod"><div><small>USED ROD</small><b id="sumRodName">Driftwood Branch</b></div></div>
-      <div class="summaryStats">
-        <div class="sumCard"><small>SCORE</small><b id="sumScore">0</b></div>
-        <div class="sumCard"><small>COINS WON</small><b id="sumCoins">0</b></div>
-        <div class="sumCard"><small>BEST STREAK</small><b id="sumStreak">0</b></div>
-        <div class="sumCard"><small>RARE FISH</small><b id="sumRare">0</b></div>
-      </div>
-      <div class="summaryActions">
-        <button class="primary" id="again">PLAY AGAIN</button>
-        <button class="ghost" id="summaryShop">UPGRADE ROD</button>
-      </div>
-    </div>
-  </div>
+  <div id="intro" class="modalScreen visible"><div class="panel introPanel"><div class="logoMark">🎣</div><h1>DEEP<br>CATCH</h1><div class="tag">Catch fish, earn coins and build a rod collection that changes how every fight feels.</div><div class="tips"><div class="tip"><strong>↔</strong>Drag the lure</div><div class="tip"><strong>●</strong>Hold & release</div></div><div class="currentRodCard" id="introRodCard"><img id="introRod" alt="Current rod" /><div><small id="introTier">COMMON ROD</small><b id="introRodName">Driftwood Branch</b><span id="introPassive">Starter Balance</span></div></div><button class="primary" id="play">START FISHING</button><button class="ghost" id="openShop">ROD SHOP</button><div class="subline">8 catches complete a trip · equipment, fish art and coins save automatically · V3.2</div></div></div>
+  <div id="shop" class="overlay"><div class="sheet shopSheet"><div class="sheetHead"><div><small>EQUIPMENT</small><h2>Rod Shop</h2><p>Upgrade your style, not just your stats.</p></div><div class="headRight"><div class="coinBubble">🪙 <span id="shopCoins">0</span></div><button class="iconBtn" id="closeShop" aria-label="Close shop">✕</button></div></div><div class="shopLegend"><span>POWER</span><span>CONTROL</span><span>LUCK</span><span>REWARD</span></div><div id="shopGrid" class="shopGrid"></div></div></div>
+  <div id="summary" class="overlay"><div class="sheet summarySheet"><div class="summaryTop"><small>TRIP COMPLETE</small><h2 id="sumTitle">Great Session!</h2><p id="sumSub">You packed the cooler with fish.</p></div><div class="summaryRod"><img id="sumRodImg" alt="Equipped rod"><div><small>USED ROD</small><b id="sumRodName">Driftwood Branch</b></div></div><div class="summaryStats"><div class="sumCard"><small>SCORE</small><b id="sumScore">0</b></div><div class="sumCard"><small>COINS WON</small><b id="sumCoins">0</b></div><div class="sumCard"><small>BEST STREAK</small><b id="sumStreak">0</b></div><div class="sumCard"><small>RARE FISH</small><b id="sumRare">0</b></div></div><div class="summaryActions"><button class="primary" id="again">PLAY AGAIN</button><button class="ghost" id="summaryShop">UPGRADE ROD</button></div></div></div>
 </div>
 <script>
 window.ROD_ASSETS={"driftwood":"data:image/webp;base64,UklGRuoeAABXRUJQVlA4WAoAAAAQAAAA1QAASQEAQUxQSAYPAAABDLVt2zDy/49HSFsjQoHbNsoYj+8T1DGpWwqdRvkt3DQXJtZT9JLOlksT77Yp5nRTftP593zvFu2OclwPCIaubWvHtmft6MDQFvB05GYq+sKuNS/7C43T9xF2R+M6REqse+a0X7u3uI9iSKqKyUDNOAuNaQ7lhpJWo7fE5wJ/9ySiXtHrUf1lhDKPvMkOFQR2TzMwuQ+ikYWhSjPeop5BVK/iPZWCKbgFCD4zBu6MKuf6MkqtvGlzK6/loR5oYp0v0ddr+JOyL8mniRksHSqOM6/yi7S0At6fZ+GtxLK0jJnXk+4U9RVVgPFeJYy9rY+uyalNxYTQtARyD/MCdw5wQ7uAVYUVm3x4rYhGKqTWgN3+XwCi6eP72C/iYoOVzz7pkGHsbSCX0eyJKIuYf9PqJ6f+LXLDdqGsYeFAi6jiDfIGZPn1J4vhTHA9eUq0ANwy1hxkzf8qlx+DE/DuuVr4PBkaYYo7+X4qfHqKIz5SN4hMA/BD7ORBAAgDa2gA7wFCH64v9P23EVhCvhaBuOz5emJY7Eya3mJHkDEoV1yF4+mv3XcI9DbTqYecYcL4mlKY+uzCIqdQNgvLkN7tGsxA+oDQBMJpLznOqVwfUF/il/Ssn3qY7MsJqkGlHTWgMOrs1qVhQyVE/6fEQL3AX35fwlxTUsBpvxkLc/WLL/l0KIriSnmmYW5kTKV14rMjNYvpgejEcf0w/2K+1KcwXorLIkIEd4n5KO7ysCkPT1RilpnGn+dSLBjQZnWg4WxnYfU0m1AkAz29gM9gNqjGgyKMFoMwEWQFUfVvgteKIUpGx9Liaf3P/I+oHRlvk1laRh7UYVHiMmhuymUfLMVSFwGswaJBxUkD85j8jJiRd+r5NspnzaYjYd8OtvyvbCt5q6djRUAFhQz2L4GuF+HtFnLRIZApQ6qZdBRFLvu8RnNTYD5S5jFHegvavWDOgfq97h9RlkUqS47kCz+0eoHh9f3WOMT52rTDuLeSJMsdt8/bBojdQsTD6D6wZOfejmDNluAPuUDllTcukjaDNyEjXhbbHI5h4FuqMvnceJOAPoVAAP0WwAl0jSIsbiJVgucCenHaabT9CnVN5u8hPNZx8lfHFPls83kZuENat9NKbCWMPe4IB3ejf4fD0k3qXgdhPj+nHfncH+AOo/8gNbSQVgBPR9dfjheE2MO4uLCyz74H0qNYHWs2DhNWbeqhjoKdMI9N1l4W4bZ33JHGoWm96wF9xX+ZccTx1tiQ7iJmLbyw56Rp9fxmLwOe7g5/NzLwOP4fz03rjUq0poOuc/7KyZUsmuEVMkkzSWO0mtCipx7tmkCG+zOL3g3WXeoJKjEpDdrlCjOuE+KFDZC3Ilprbn6CdycJ+fRrYnkIbwfTdFTBmVpWb7Xr7f3jyYpTJ0MaY8XvBUtMhGV/gLW3gSDvAp7en8KKHbYw2naoeGNK+1ZydXq2wfGyuHxz61DzqsJ+/X7C7VNNlkJlUXQnXDqA4E7HjT/Z7VUbkbRmEH5ZdGytrDI0uWtYmwIMgKyfuUrhq9poZaolklkp/yIzZOyZyW2bYWEy+QO9bB5wOrKdi7rpj5oOiK0/FdlQj4Yy/EnM0Cyq4q4apL0H4x4zj/ceq27roG9+k0xxGJpG8VZOiEub0wWj9R2UFl0u1gwLJkbHszOq9F2QFgQErdf1ty5P6VI+rRsP+4uTd4GTZu4pdh4jJ9xV3/3tx9j4bj1GkwmgOGVvC6x1wsmu8uDuH2XEc9vzavEghjg1oN6oFXW94h2x/5Zu/uoyRoUCnK8o+8S+3eM7Q7biKH/3ciqTijmgJhN9qGxB7Qx+15nI00Ks1Qd4JQFj7BktNqtDsRnHPMk+z9d4BrENtjy2xQ3gOe4IidJ4OdAmeDYhqMw2R/NG2mmkiWPKz0j+JmIjnz0N93uCTj5rfFDPW7A9A7g/tCvbA7D6hDAk0KXbEYk/x5XLZ7eC5uPP7K5G7cLn53suapD8OPRe/Pn2feV7rAsF4A7B7jRc8oTqgADMSkvUJ5llrnP1BGX8HEg1pFuE0Z2yPlP1/8eL78pXvE4mVpcaLXb+e8v7x5PjV/uO2MO/k/0pkNN/EvNSNW1GKcIYelQbh/4JfzARVw5Hzs3g2Npv/yqaTBqGgC7aTjMkju57ft5NSXciCwOwMcDtMkSbj8bQ8yRKwZwF3x/jJ3gUo3BaCGpzBbBja4Y/oYERMMbDCaDRYuwb73zLXTzsTGZ0LSTyDtH4aj4qWk5L5iKiyrg/lQoV9H7Bv58sPJjuF2zO73JvApAz4Mm3sHyRj2y1sKtbcWHfpHO16u6okVSxr0fO/4T0A3DDK+zZD4x9AbRBbtj+P6g+NODdN10SzFAinwFQt3FTFlUMyVGwuocQHxilgxpdYL5Hjp3j8LB/0TKjRieepKWzdaBicV+yauhyEWNsZXcPfxpM3Y23NBjgCcOSimGiKUwEUW3V6K7NkkwALMtILJpx8DUL1zM0NFMFdlQXJgpc3+eNlz0Yr2lHH/yl/Cwi6MEyTGM7f5FfA5aqNbxoRaC2wAQ1Zr6+Q0iLZ/k/o+yeLqBKd3xU6hv8v3h98jfA4xYB9knyVpD1M3x2ZrH0mGgCFy0cbUvrwJ1h3ZVf8lqzZn0B9zjY+7MwHYoMRmjvQPzWsQp0xWe7Z5pN73AOLtgHgKhFFgfb3Q+LAuW62bjmPOXCUH3cN0Yc7A6X+2N9q7A0wG+O3K7DnX0rKHDZ/jMNDeGQzQy9A4xTdfy4o0POi2r2rJVc9FJg0FAx9wBj3DvgxtF+oQ3WJQ6AOrv7/uPxPTzpQydnOMlZhnwzTiaMScd9jM9KQLYx7gXu4EbIRvzk+wEaUZg+9LCQ5VC5hcfUbSSXjr8hO+Pv+yljApl0Sevn2xw0GQVAEoShWS8eLCQgaLKDvVcKOYfhOvgJQw8bi+NPHMKwMyOo8SVyrA9EBY5N0/XnMdIeMN+PO5ZnLJYQ5XXGfEIJxCNL2jT1Zz8VpwGi3rO+KsEzks5x7+K8+Kp3RfCUVLGUZjpNGOd+uwq78vO+1d3PgoGkv1+/VQcBx2y0d7sKAZjkv/lAVm1wRH8j+9ykj4ZkweI3d0So/6bRDzccVEGK3SEYEVI7EUIHuyWqV0wbfcbn1N1P+FZADd3p/CF3GSKCD7jH7VqfPCVLkiEq9JBBt3y1bItRTjheGG0mLFlQmNYzYwqB+4/7t4XFsqAJp4FSbpYa8hpaFOdmiKOLuX9QBaA6wf7O8lZ35lQh5rQ1tEx3cPIorDzhbRgd8zgVQ4d2bO5jv8iP+0OBv4AdtX5yhRz/dJjMYK2z/L3+74Vx3LKxTkIHkqrFJhNvllCgkpYNWTGl/FJGp0WdPFvTKO3W7fIYzVKBeZmACPuGaLeYs8Hr5KNIk5nWn1I+jjEAAmjkkOjs6UkweulcVHjf4HnVf4r0Rt0AZDShBC4Bzj9dMi/w+XLKwKBKqA/K9zJ4Z3rgwzlRzfV2iX5Gcnm/AiAA9L0ByG3woIj1D9YbTt7K51tLfaGWtAJsWdKtNP/3twU0dyB7R/PYM9j4B3lf8fFR2M4g3G/fInRvMfbKvPgtVxhqwujYSu/cDke4oXbs2LuYfOztm42BdBXfnh2Mfk1FO8vzz4og0+nBTKhZs+JYTxvtjGMZdn9HrWDRnI6fETn4HWnWf5fUSo6y8qJxr/t3w1KsNJWVf2OJDTrBS4GtRF6jRWDqP6c/XgDjc88x39gmuK3z6g3jLyVGWrTM1rZt0AfxhdBsKe5DK3nGqTI22TQqnqsCbdCNwALdn6SLSi6mCpBFBDbC8uBpsaONkyaT9dTt+HtURDpqAbJkz7ArspzhNoNJehqFuipkC2sB8EEsjEyzhrYIT3GrlY5VTSwoSjBcVfpHLoY3oMHKTbWXacqrQla6YAEwozSfOSIXZiAiNXar8dWBSbFyV8OEuJ1wDhe/F/yIjB+DRewCp28QZ1A+QdWx0Aab3ldcL+axAwIRRvyi+uQJ4lH4TDra7c+UYL4TWnjCaQRnNkTmveKY/rPfqrQM8uC1a4A0DeROijMnOUCNuh9Pt4UVGlMNfXX9RDyZTmrSWfpDt6Qkc9/TaTW0N1NQ1yTqD/j13/7+VubC3PS22g6CwVdYF9Xg7UIduzb/ojtlTggNGv+ge8RkRBbtf0TXmbsr2QzK7K/mGNe5gc4zX+Xk0rQcoZto2RBu0fNfEoeyvabMUlObO1t87pO7uPvfNbjuOJGoHpOXlt8c0Rs7uL5h0xj0mnbvLw7v5AmzfKYSeUECHWaN+X1hM4CVjP9KVG1qOaa54M0ybLr6SJ+Xl/FvDcyRjZqa7FzE/fdYlVljxMiDaZQU6CZTMGCO0tyvVoF0ZPqdZr/wRwIMij8egSWgt1kd/NbZsM4FQGp/N+tqnXrJXqQp1hwu1yX6CaA+EfHnXY2KVosTn0J6iUkh+p2OFItfnchFWDNkZvYlbTiLKdU0FcgB5PyInOxwkNFVEkXlkLAju5DeLFHLNsQplRgOYzX+O0PBjWzOeZlxdllsa/SZN5Hqr+3xcx2IyDIvwMGqmDzr1GC3A7iA0kQd1vGNybLgdJcC4m6DgAMFe9be3VjQG9XSMXgZxYbYPI3f2xteJKU2SBTOf2kLj6BuQ+siUyMlGp0h3dmAG6uZPeO5cI3wcVCeSaaGBDEWnHBIjOWYd9xa5UyfFwdnS1Y7NU2/TS3qbqmYAZFyCD7QuW1SdHGIKPXluVPoAilB5mJv+FjEbsY1XReEaqieyRHUCkvniymR70njmOVyCgQJOHSv8oW3dJAM0TjQzVlTdBbCIjHgOyqXpzhj51aaF5Hd8l3awGblZIqt3fFjRfF/NpmKTUNIsunfQOVhwfDhtqHSLhJoXD58G7MPDDsr7H2WEKQ5Ivt8bWW27NgpGwW+KUhYXdoA0Y5NaOTwhLtVKJ0zo6noC8h+AJd4upmq4/yCxpIpfKt5GbvJhM2J7Pz8fysYXHFvBzLhSK/Ra8g6oFv69x3sABTi/TS7AaKS8Ch7Ywc/BxbtMafmM7YRbmF6M3Yquv+ngk6LeAhVm1AP/2uO3uVORsWC+MsOc7VCXwCtXFcZfwQURrD+qs3fkAhcqJ8f+mXa2zmpfLFmrWeA5gNI7r+GxQ3DkSdghibdIQ7uyJhUBPAIZ2AFs7cXAv4A3gH2DmA1j1ukocotwsB2aQh3CjSfYgHmr9Xy3CGmHAc0k3kLRB3i9T80qU5l0f5U+OLo4fqBJ1D1qMUwnqwJuVCFmtiVPsc7+p7pJS+V+wE3g85+Ct9rYOGr0JSXsjiS7jgvKX0R/fqHBz/1igWKxHH6lmqoa+gjab9fcMqpGs8/xYRD8/Q7Xb5fV69kuMMUg8zIyrB7zgiQoGcuv1FaXKl+3xXKYebUwunJGLaAIGQoajUaC7qN4tLIX1k68QfLIeZNEPtY2zuFoBFAz6cAw1t94fs6jK3j0BzbBTASvICbRv56yuHLka8Vf+YkV8OrmdN4mdFHJCenBztrVBWKG4xx4X0Wti1dhHtGgZuLd5dhNbK1xX8veR+8sYz7/kz9jru2yvkWOgvuOlme+Uc1PUvAY4UmBQh9UQzIrbRctRYkgGPazNB6iv/viO8MEVwDk1kNQhT/w8CvqgWZO1IeCdYknXSg/HMSLaSOUIWA7a6ViTNrZvD5DJxHJMPoPZdQj93Xveb2d32ob4eKuM1E5gbfshWlaZXTABsNBGBfYf19W8eCZVd88dHjpwKK4fweAvPh9MoG2y5Wg+xj2ZzkCCrKbO4dCNEFLBpiKkSsDVem9Za+CqG6PtRCak5jVeQUYSQNTOkoI4oDHL3vyiCvGEKOm/BnhkzYVRuaTIr75L1w0Cw2pRtwBRpe96JRkhaNcTlLyYLw0UY+wDEwkYsToKDmz7qbA5BMGm7DpLB3QtVHg9Vh5N7pfnkOR9YWSnqCyLAvRbQWqvhUAAABQNQKVoAMAAAAA"};
 </script>
+<script src="assets/rods/angler.js?v=3.2"></script>
+<script src="assets/rods/voyager.js?v=3.2"></script>
+<script src="assets/rods/storm.js?v=3.2"></script>
+<script src="assets/rods/inferno.js?v=3.2"></script>
+<script src="assets/rods/void.js?v=3.2"></script>
+<script src="assets/rods/solar.js?v=3.2"></script>
+<script src="assets/rods/shadow.js?v=3.2"></script>
 <script>
 window.FISH_ASSETS_DATA=window.FISH_ASSETS_DATA||{};window.FISH_ASSETS_DATA['aqua-turtle']="data:image/webp;base64,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";
 
