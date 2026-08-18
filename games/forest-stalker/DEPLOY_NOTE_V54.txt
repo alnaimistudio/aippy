@@ -1,1 +1,0 @@
-V5.4 final deploy includes improved deer model, hit detection, 5-round magazines, safe deer distance, 5-deer bag capacity, and restored audio preload.
