@@ -1,5 +1,5 @@
-# Forest Stalker
+# Forest Stalker V5
 
-Mobile portrait deer hunting web game.
+Infinite 360° deer hunting game for mobile portrait.
 
-Files in this folder belong only to this game.
+Features: multiple animated deer, endless respawn hunting, hunted score, harvested-deer bag, coin economy, sell system, five sniper rifles with different stats, simplified HUD and controls.
