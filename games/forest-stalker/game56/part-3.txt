@@ -1,0 +1,35 @@
+'open');ui()}
+function closeShop(){shopOpen=false;run=true;$('#shop').classList.remove('open')}
+function renderShop(){
+  const list=$('#rifles');list.innerHTML='';
+  SNIPERS.forEach(g=>{
+    const owned=save.owned.includes(g.id),equipped=save.equipped===g.id;
+    const card=document.createElement('article');card.className='rifle '+(equipped?'equipped':'');
+    card.innerHTML=`<div class="rifleVisual"><div class="rifleSprite tier${g.id}" role="img" aria-label="${g.name}"></div></div><div class="rifleInfo"><div class="rifleTop"><strong>${g.name}</strong>${equipped?'<span class="equippedTag">EQUIPPED</span>':''}</div><small>${g.desc}</small><em>DMG ${g.damage} · ${g.scope}× SCOPE · STABILITY ${Math.round(100/g.sway)}%</em><button class="rifleAction ${equipped?'isEquipped':''}">${equipped?'EQUIPPED':owned?'EQUIP':`BUY · <i class="coinIcon tiny"></i>${g.price}`}</button></div>`;
+    const action=card.querySelector('.rifleAction');action.onclick=()=>{if(equipped)return;if(!owned){if(save.coins<g.price){note('NOT ENOUGH COINS');return}save.coins-=g.price;save.owned.push(g.id)}save.equipped=g.id;shots=5;persist();renderShop();ui()};list.appendChild(card);
+  });
+  $('#sellCount').textContent=save.bag;$('#sellValue').textContent=save.bag*90;
+}
+$('#sell').onclick=()=>{if(save.bag<=0)return;save.coins+=save.bag*90;save.bag=0;persist();clearBagFull();renderShop();ui();note('DEER SOLD · HUNTING UNLOCKED',1100)};
+$('#shopBtn').onclick=openShop;$('#closeShop').onclick=closeShop;$('#fire').onpointerdown=e=>{e.preventDefault();shoot()};$('#reload').onpointerdown=e=>{e.preventDefault();reload()};
+startBtn.onclick=async()=>{if(!modelReady){location.reload();return}startBtn.disabled=true;startBtn.textContent='STARTING…';try{await initAudio()}catch(e){console.warn('audio fallback',e)}$('#intro').style.display='none';run=true;ui();if(save.bag>=BAG_CAP)setTimeout(showBagFull,500)};
+let drag=false,lx=0,ly=0;
+addEventListener('pointerdown',e=>{if(!run||shopOpen||e.target.closest?.('button'))return;drag=true;lx=e.clientX;ly=e.clientY});
+addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-lx,dy=e.clientY-ly;lx=e.clientX;ly=e.clientY;const gun=SNIPERS[save.equipped],sens=.00185*(6/gun.scope);tyaw-=dx*sens;tpitch=Math.max(-.62,Math.min(.62,tpitch-dy*sens))});
+addEventListener('pointerup',()=>drag=false);addEventListener('pointercancel',()=>drag=false);
+
+function tunePerformance(now,dt){if(perfTuned)return;if(dt>0&&dt<.1){perfFrames++;perfTime+=dt}if(now-perfStart>5000&&perfFrames>100){const fps=perfFrames/perfTime;if(MOBILE&&fps<50){const dpr=fps<38?1.0:1.16;R.setPixelRatio(Math.min(devicePixelRatio||1,dpr));R.setSize(innerWidth,innerHeight,false);if(fps<34)R.shadowMap.enabled=false}window.__forestStalkerPerf={version:'5.6',fps:Math.round(fps*10)/10,dpr:R.getPixelRatio(),adaptive:true};perfTuned=true}}
+function loop(now){
+  requestAnimationFrame(loop);const dt=Math.min(.033,(now-last)/1000);last=now;if(modelReady)DEER.forEach(d=>animateDeer(d,dt,now));
+  const gun=SNIPERS[save.equipped],sway=(run?gun.sway:0),t=now*.001;yaw=THREE.MathUtils.lerp(yaw,tyaw,1-Math.exp(-16*dt));pitch=THREE.MathUtils.lerp(pitch,tpitch,1-Math.exp(-16*dt));recoil=THREE.MathUtils.lerp(recoil,0,1-Math.exp(-15*dt));shotShake*=Math.exp(-24*dt);
+  const shotX=(Math.random()-.5)*.0052*shotShake,shotY=(Math.random()-.5)*.0060*shotShake;
+  const reloadActive=reloadShakeEnd>now;const reloadX=reloadActive?Math.sin(now*.045)*.00125:0,reloadY=reloadActive?Math.sin(now*.061+1.1)*.00105:0;
+  C.rotation.y=yaw+Math.sin(t*1.2)*.00105*sway+shotX+reloadX;C.rotation.x=pitch+Math.sin(t*.92)*.00076*sway+recoil+shotY+reloadY;
+  if(now>=rangeTick){let nearest=999;DEER.forEach(d=>{if(d.root.visible&&d.state!=='dead')nearest=Math.min(nearest,C.position.distanceTo(d.root.position))});$('#range').textContent=(nearest<998?Math.round(nearest):'--')+' m';rangeTick=now+220}
+  if(run&&audioBuffer&&now>=nextDeerCall){const live=DEER.filter(d=>d.root.visible&&d.state!=='dead');if(live.length){const d=live[Math.floor(Math.random()*live.length)];deerVoice(d,Math.random()<.58?'snort':'grunt',.9)}nextDeerCall=now+4800+Math.random()*6500}
+  R.render(S,C);if(++shadowFrames===3)R.shadowMap.autoUpdate=false;tunePerformance(now,dt);
+}
+requestAnimationFrame(loop);
+addEventListener('resize',()=>{R.setSize(innerWidth,innerHeight,false);C.aspect=innerWidth/innerHeight;C.updateProjectionMatrix()});
+window.__forestStalker={version:'5.6',state:()=>({kills:save.kills,bag:save.bag,coins:save.coins,alive:DEER.filter(d=>d.root.visible&&d.state!=='dead').length,model:'Quaternius Deer GLB',audioReady:!!audioBuffer,minDeerDistance:MIN_R,magazine:5}),deer:DEER,acquireTarget,firstBlocker};
+ui();
