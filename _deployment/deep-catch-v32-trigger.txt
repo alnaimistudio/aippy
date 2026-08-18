@@ -1,0 +1,2 @@
+trigger=2026-08-18T15:58:00Z
+reason=final-live-verification-after-rod-pack-deploy
