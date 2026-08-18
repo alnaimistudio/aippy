@@ -1,0 +1,72 @@
+name: Ninja Climb Final Public Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ninja-final-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify public playable URL in mobile Chromium
+        id: test
+        continue-on-error: true
+        env:
+          PLAY_URL: https://html-preview.github.io/?url=https://github.com/alnaimistudio/aippy/blob/main/ninja-climb/play.html
+        run: |
+          set -euo pipefail
+          node --check ninja-climb/game.js
+          grep -q '<title>Ninja Climb</title>' ninja-climb/play.html
+          mkdir -p /tmp/pw
+          npm install --prefix /tmp/pw --no-save playwright@1.55.0 >/dev/null 2>&1
+          /tmp/pw/node_modules/.bin/playwright install chromium >/dev/null 2>&1
+          NODE_PATH=/tmp/pw/node_modules node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+            const errs=[];
+            page.on('pageerror',e=>errs.push(e.message));
+            const u=process.env.PLAY_URL;
+            const r=await page.goto(u,{waitUntil:'domcontentloaded',timeout:60000});
+            if(!r||!r.ok()) throw new Error('public HTTP failed');
+            await page.locator('#startBtn').waitFor({state:'visible',timeout:60000});
+            await page.locator('#startBtn').click();
+            await page.locator('#hud:not(.hidden)').waitFor({state:'visible',timeout:15000});
+            const canvas=page.locator('#game');
+            for(let i=0;i<8;i++){await canvas.click({position:{x:195,y:520}});await page.waitForTimeout(140)}
+            await page.waitForTimeout(1000);
+            const altitude=Number(await page.locator('#altitude').textContent());
+            if(!(altitude>0)) throw new Error('altitude did not increase');
+            if(errs.length) throw new Error(errs.join(' | '));
+            console.log('PUBLIC_GAME_OK');
+            console.log('ALTITUDE='+altitude);
+            console.log('PLAY_URL='+u);
+            await page.screenshot({path:'/tmp/ninja-final.png'});
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - name: Write result
+        if: always()
+        env:
+          RESULT: ${{ steps.test.outcome }}
+        run: |
+          mkdir -p _deployment
+          cat > _deployment/ninja-climb-final.json <<EOF
+          {"url":"https://html-preview.github.io/?url=https://github.com/alnaimistudio/aippy/blob/main/ninja-climb/play.html","browser_gameplay":"$RESULT","run_id":"$GITHUB_RUN_ID","commit":"$GITHUB_SHA"}
+          EOF
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add _deployment/ninja-climb-final.json
+          git commit -m 'chore: record final Ninja Climb public check [skip ci]' || exit 0
+          git push
+      - name: Require success
+        if: always()
+        run: test '${{ steps.test.outcome }}' = 'success'
