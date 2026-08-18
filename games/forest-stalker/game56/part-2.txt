@@ -1,0 +1,36 @@
+ateRig(d,now,running,false)}
+
+const startBtn=$('#start');startBtn.disabled=true;startBtn.textContent='LOADING…';
+Promise.all([modelPromise,audioPreload]).then(()=>{for(let i=0;i<6;i++)DEER.push(createDeer(i));startBtn.disabled=false;startBtn.textContent='START HUNT'}).catch(e=>{console.error('Forest Stalker startup',e);startBtn.textContent='RETRY';startBtn.disabled=false});
+
+let run=false,shots=5,reloading=false,shotLock=false,totalShots=0,hits=0,yaw=0,pitch=0,tyaw=0,tpitch=0,recoil=0,last=performance.now(),shopOpen=false;
+let shotShake=0,reloadShakeEnd=0,rangeTick=0,shadowFrames=0,perfStart=performance.now(),perfFrames=0,perfTime=0,perfTuned=false;
+const ray=new THREE.Raycaster(),centerNdc=new THREE.Vector2(0,0);
+function applyScope(){const gun=SNIPERS[save.equipped];C.fov=105/gun.scope;C.updateProjectionMatrix();const read=$('.read');if(read)read.textContent=`${gun.scope}× SCOPE`}
+const ui=()=>{const gun=SNIPERS[save.equipped];$('#ammo').textContent=shots;$('#reserve').textContent='∞';$('#score').textContent=save.kills;$('#coins').textContent=save.coins;const sc=$('#shopCoins');if(sc)sc.textContent=save.coins;$('#bag').textContent=`${save.bag}/${BAG_CAP}`;$('#gunName').textContent=gun.name;$('#acc').textContent=(totalShots?Math.round(hits/totalShots*100):100)+'%';applyScope()};
+function note(t,ms=800){const m=$('#msg');m.textContent=t;m.classList.add('show');clearTimeout(note.t);note.t=setTimeout(()=>m.classList.remove('show'),ms)}
+function pop(t,good=true){const e=$('#dmg');e.textContent=t;e.className='dmg show '+(good?'good':'');clearTimeout(pop.t);pop.t=setTimeout(()=>e.classList.remove('show'),650)}
+let bagBanner=document.createElement('div');bagBanner.className='bagFull';bagBanner.innerHTML='<b>BAG FULL · 5/5</b><span>Open SHOP and sell your deer to continue hunting</span>';document.body.appendChild(bagBanner);
+function showBagFull(){bagBanner.classList.add('show');$('#shopBtn').classList.add('attention');clearTimeout(showBagFull.t);showBagFull.t=setTimeout(()=>bagBanner.classList.remove('show'),4200)}
+function clearBagFull(){bagBanner.classList.remove('show');$('#shopBtn').classList.remove('attention')}
+function deerProjectedRect(d){d.model.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(d.model);if(box.isEmpty())return null;const min=box.min,max=box.max,corners=[];for(const x of[min.x,max.x])for(const y of[min.y,max.y])for(const z of[min.z,max.z])corners.push(new THREE.Vector3(x,y,z));let minX=99,maxX=-99,minY=99,maxY=-99,front=false;for(const p of corners){p.project(C);if(p.z>-1&&p.z<1)front=true;minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y)}return front?{minX,maxX,minY,maxY}:null}
+function acquireTarget(){let best=null,bestScore=999;for(const d of DEER){if(!d.root.visible||d.state==='dead')continue;const r=deerProjectedRect(d);if(!r)continue;const margin=.028,inside=0>=r.minX-margin&&0<=r.maxX+margin&&0>=r.minY-margin&&0<=r.maxY+margin;if(!inside)continue;const cx=(r.minX+r.maxX)/2,cy=(r.minY+r.maxY)/2,dist=C.position.distanceTo(d.root.position),score=Math.hypot(cx,cy)+dist*.0002;if(score<bestScore){const rel=(0-r.minY)/Math.max(.001,r.maxY-r.minY);best={d,zone:rel>.72?'head':rel>.45?'vital':'body',dist};bestScore=score}}return best}
+function firstBlocker(maxDistance=100){ray.setFromCamera(centerNdc,C);ray.far=maxDistance;return ray.intersectObjects(SHOT_BLOCKERS,false)[0]||null}
+function startShotFeedback(){recoil=.065*(1+SNIPERS[save.equipped].sway*.1);shotShake=1;try{navigator.vibrate?.(20)}catch{}}
+function shoot(){
+  if(!run||shopOpen||reloading||shotLock)return;
+  if(save.bag>=BAG_CAP){showBagFull();note('BAG FULL 5/5 · SELL BEFORE HUNTING MORE',1500);return}
+  const gun=SNIPERS[save.equipped];if(shots<=0){note('MAG EMPTY · RELOAD',1000);return}
+  initAudio().catch(()=>{});shots--;totalShots++;shotLock=true;startShotFeedback();ui();playCue('shot',{volume:1,rate:.99+Math.random()*.02});setTimeout(()=>shotLock=false,gun.fireDelay*1000);
+  const target=acquireTarget();
+  const blocker=firstBlocker(target?target.dist+1:90);
+  if(blocker && (!target || blocker.distance < target.dist-1.15)){
+    note('SHOT BLOCKED · TREE',700);pop('TREE BLOCKED',false);DEER.forEach(d=>{if(d.root.visible&&d.state!=='dead'&&d.root.position.distanceTo(C.position)<44)flee(d)});if(shots===0)setTimeout(()=>note('5 SHOTS USED · RELOAD',1200),600);return;
+  }
+  if(!target){note('MISS',480);DEER.forEach(d=>{if(d.root.visible&&d.state!=='dead'&&d.root.position.distanceTo(C.position)<42)flee(d)});if(shots===0)setTimeout(()=>note('5 SHOTS USED · RELOAD',1200),520);return}
+  hits++;const {d,zone}=target,base=zone==='head'?100:zone==='vital'?72:gun.damage,damage=Math.min(100,Math.round(base));d.hp=Math.max(0,d.hp-damage);pop(zone==='head'?'HEADSHOT · -100':zone==='vital'?`VITAL · -${damage}`:`-${damage} DMG`);const sp=deerSpatial(d);playCue('impact',{volume:.95,pan:sp.pan,delay:.035});deerVoice(d,'grunt',1.1,.10);
+  if(d.hp<=0){d.state='dead';d.t=0;d.respawn=2.4;save.kills++;save.bag=Math.min(BAG_CAP,save.bag+1);persist();note(`DEER DOWN · SCORE ${save.kills}`,1000);if(save.bag>=BAG_CAP)setTimeout(()=>{showBagFull();note('BAG FULL 5/5 · SELL TO CONTINUE',1800)},950)}else{flee(d);note(`${zone.toUpperCase()} HIT · ${d.hp} HP`,720)}
+  DEER.forEach(o=>{if(o!==d&&o.root.visible&&o.state!=='dead'&&o.root.position.distanceTo(d.root.position)<16)flee(o)});if(shots===0)setTimeout(()=>note('5 SHOTS USED · RELOAD',1200),700);ui();
+}
+function reload(){if(!run||shopOpen||reloading||shotLock)return;const gun=SNIPERS[save.equipped];if(shots>=5)return;initAudio().catch(()=>{});reloading=true;reloadShakeEnd=performance.now()+gun.reload*1000;note('RELOADING 5-ROUND MAG…',Math.round(gun.reload*1000));playCue('reload',{volume:1});try{navigator.vibrate?.([12,80,12,120,12])}catch{}setTimeout(()=>{shots=5;reloading=false;reloadShakeEnd=0;ui();note('5/5 READY',500)},gun.reload*1000)}
+function openShop(){shopOpen=true;run=false;renderShop();$('#shop').classList.add(
