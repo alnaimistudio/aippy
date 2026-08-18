@@ -1,14 +1,687 @@
+import * as THREE from 'three';
 
-import * as THREE from 'three';import{GLTFLoader}from'three/addons/loaders/GLTFLoader.js';
-const $=s=>document.querySelector(s),R=new THREE.WebGLRenderer({canvas:$('#g'),antialias:true,powerPreference:'high-performance'});R.setPixelRatio(Math.min(devicePixelRatio,1.6));R.setSize(innerWidth,innerHeight,false);R.shadowMap.enabled=true;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.02;const S=new THREE.Scene();S.background=new THREE.Color(0x93a493);S.fog=new THREE.FogExp2(0x728173,.022);const C=new THREE.PerspectiveCamera(17.5,innerWidth/innerHeight,.08,220);C.position.set(0,1.72,8);C.rotation.order='YXZ';S.add(new THREE.HemisphereLight(0xdbe4d7,0x263024,1.3));const sun=new THREE.DirectionalLight(0xffe8c1,2.2);sun.position.set(-25,40,15);sun.castShadow=true;S.add(sun);
-const ty=(x,z)=>Math.sin(x*.12)*.28+Math.cos(z*.09)*.25+Math.sin((x+z)*.05)*.18,g=new THREE.PlaneGeometry(180,180,70,70);g.rotateX(-Math.PI/2);for(let i=0;i<g.attributes.position.count;i++){const x=g.attributes.position.getX(i),z=g.attributes.position.getZ(i);g.attributes.position.setY(i,ty(x,z))}g.computeVertexNormals();const G=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0x354b30,roughness:1}));G.receiveShadow=true;S.add(G);
-let seed=123456;const rnd=()=>((seed=Math.imul(seed,1664525)+1013904223>>>0)/4294967296),d=new THREE.Object3D(),tg=new THREE.CylinderGeometry(.15,.28,3.6,7),tm=new THREE.MeshStandardMaterial({color:0x4b3b2b}),cg=new THREE.ConeGeometry(1.2,4.1,8),cm=new THREE.MeshStandardMaterial({color:0x2e4b30}),T=new THREE.InstancedMesh(tg,tm,145),Q=new THREE.InstancedMesh(cg,cm,145);T.castShadow=Q.castShadow=true;for(let i=0;i<145;i++){let x=(rnd()-.5)*108,z=-8-rnd()*110;if((Math.abs(x)<4&&z>-34)||(z<-24&&z>-47&&x>-10&&x<9))x+=(x<0?-1:1)*(11+rnd()*5);const s=.65+rnd()*1.1,y=ty(x,z);d.position.set(x,y+1.8*s,z);d.scale.setScalar(s);d.rotation.y=rnd()*6.28;d.updateMatrix();T.setMatrixAt(i,d.matrix);d.position.set(x,y+4.0*s,z);d.scale.set(s,s,s);d.updateMatrix();Q.setMatrixAt(i,d.matrix)}S.add(T,Q);
-const deer=new THREE.Group();S.add(deer);const invis=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}),body=new THREE.Mesh(new THREE.SphereGeometry(1.05,12,9),invis),vital=new THREE.Mesh(new THREE.SphereGeometry(.46,10,8),invis),head=new THREE.Mesh(new THREE.SphereGeometry(.42,10,8),invis);body.position.set(0,1.2,0);vital.position.set(.28,1.25,0);head.position.set(1.5,2.35,0);body.name='body';vital.name='vital';head.name='head';deer.add(body,vital,head);let rig={},base={},rigReady=false,visual=null,visualBaseY=0;
-function fallback(){const q=new THREE.Group(),fur=new THREE.MeshStandardMaterial({color:0x80502f,roughness:1}),dark=new THREE.MeshStandardMaterial({color:0x39271d});const add=(geo,m,p,s=[1,1,1],r=[0,0,0])=>{const x=new THREE.Mesh(geo,m);x.position.set(...p);x.scale.set(...s);x.rotation.set(...r);x.castShadow=true;q.add(x);return x};add(new THREE.SphereGeometry(1,18,14),fur,[0,1.2,0],[1.3,.65,.55]);add(new THREE.SphereGeometry(.45,16,12),fur,[1.4,2.25,0],[1,.75,.7]);add(new THREE.CylinderGeometry(.22,.35,1.2,10),fur,[1.02,1.75,0],[1,1,1],[0,0,-.48]);for(const[x,z]of[[.65,.3],[.65,-.3],[-.65,.3],[-.65,-.3]])add(new THREE.CylinderGeometry(.07,.1,1.25,8),dark,[x,.55,z]);return q}const fb=fallback();deer.add(fb);visual=fb;
-function bind(m){const w=['fl1.l','fl2.l','fl3.l','fl1.r','fl2.r','fl3.r','rl1.l','rl2.l','rl3.l','rl1.r','rl2.r','rl3.r','neck1','neck2','headctrl','thorax','pelvis'];m.traverse(o=>{const n=(o.name||'').toLowerCase();if(w.includes(n)){rig[n]=o;base[n]=o.rotation.clone()}});rigReady=Object.keys(rig).length>=8}function rr(n,a,v){if(rig[n])rig[n].rotation[a]=base[n][a]+v}function anim(t,state){const fast=['alert','wounded','mortally'].includes(state);if(!rigReady){const legs=fb.children.slice(3,7),A=fast?.55:.16,f=fast?10:3.8;legs.forEach((leg,i)=>leg.rotation.z=Math.sin(t*f+(i%2?Math.PI:0))*A);return}const fast2=['alert','wounded','mortally'].includes(state),f=fast2?10.5:4.2,A=fast2?.72:.24,p=t*f,a=Math.sin(p)*A,b=Math.sin(p+Math.PI)*A;rr('fl1.l','x',a);rr('fl1.r','x',b);rr('rl1.l','x',b);rr('rl1.r','x',a);rr('fl2.l','x',Math.max(0,-a)*.55);rr('fl2.r','x',Math.max(0,-b)*.55);rr('rl2.l','x',Math.max(0,-b)*.7);rr('rl2.r','x',Math.max(0,-a)*.7);rr('fl3.l','x',-Math.max(0,a)*.3);rr('fl3.r','x',-Math.max(0,b)*.3);rr('rl3.l','x',-Math.max(0,b)*.3);rr('rl3.r','x',-Math.max(0,a)*.3);rr('neck1','x',Math.sin(t*.8)*.035+(fast2?.07:0));rr('headctrl','z',Math.sin(t*.55)*.035)}
-new GLTFLoader().load('https://cdn.jsdelivr.net/gh/Quaternius/TestGltfAssets@master/Deer/Deer.glb',x=>{const m=x.scene;m.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});const b=new THREE.Box3().setFromObject(m),sz=new THREE.Vector3();b.getSize(sz);m.scale.setScalar(2.65/sz.y);const b2=new THREE.Box3().setFromObject(m);m.position.y-=b2.min.y;m.rotation.y=Math.PI/2;fb.visible=false;deer.add(m);visual=m;visualBaseY=m.position.y;bind(m)},undefined,()=>{});
-let run=false,state='idle',st=0,hp=100,shots=5,res=15,steady=false,reloading=false,startT=0,yaw=0,pitch=-.02,tyaw=0,tpitch=-.02,recoil=0,last=performance.now(),miss=0,totalShots=0,hits=0,scoreVal=0,stamina=100,bolting=false,homeX=-2.2,homeZ=-34;const ray=new THREE.Raycaster(),range=$('#range'),read=$('#read'),hpf=$('#hpf'),hpt=$('#hpt'),ammo=$('#ammo'),reserve=$('#reserve'),msg=$('#msg'),dmg=$('#dmg'),hit=$('#hit'),blood=$('#blood'),shotflash=$('#shotflash'),scoreEl=$('#score'),accEl=$('#acc'),stamEl=$('#stam'),track=$('#track');const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),damp=(a,b,l,dt)=>THREE.MathUtils.lerp(a,b,1-Math.exp(-l*dt));function ui(){hpf.style.width=hp+'%';hpt.textContent=Math.round(hp)+' / 100';ammo.textContent=shots;reserve.textContent=res;scoreEl.textContent=scoreVal;accEl.textContent=(totalShots?Math.round(hits/totalShots*100):100)+'% ACC';stamEl.style.width=stamina+'%'}function note(t,ms=800){msg.textContent=t;msg.classList.add('show');clearTimeout(note.t);note.t=setTimeout(()=>msg.classList.remove('show'),ms)}function pop(n,v){dmg.textContent='-'+n+' DAMAGE';dmg.style.color=v?'#ffd66f':'#ff8c77';dmg.classList.remove('show');void dmg.offsetWidth;dmg.classList.add('show')}function mark(){hit.classList.remove('show');void hit.offsetWidth;hit.classList.add('show');blood.classList.remove('show');void blood.offsetWidth;blood.classList.add('show')}const forestRec=$('#forestRec'),rifleRec=$('#rifleRec'),reloadRec=$('#reloadRec');function recPlay(el,vol=1,rate=1){try{const c=el.cloneNode(true);c.volume=vol;c.playbackRate=rate;c.play().catch(()=>{})}catch{}}let ac,ambienceStarted=false;function ctx(){return ac||(ac=new(window.AudioContext||window.webkitAudioContext)())}function noiseBuf(sec=1){const a=ctx(),b=a.createBuffer(1,Math.max(1,Math.floor(a.sampleRate*sec)),a.sampleRate),x=b.getChannelData(0);for(let i=0;i<x.length;i++)x[i]=Math.random()*2-1;return b}function burst(sec,vol,low=0,high=22000,delay=0){const a=ctx(),n=a.createBufferSource(),g=a.createGain(),f=a.createBiquadFilter(),t=a.currentTime+delay;n.buffer=noiseBuf(sec);f.type=low?'bandpass':'lowpass';f.frequency.value=low||high;f.Q.value=low?0.5:0.2;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+sec);n.connect(f).connect(g).connect(a.destination);n.start(t);return n}function startAmbience(){if(ambienceStarted)return;ambienceStarted=true;try{forestRec.volume=.28;forestRec.play().catch(()=>{})}catch{}const a=ctx(),n=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();n.buffer=noiseBuf(4);n.loop=true;f.type='lowpass';f.frequency.value=850;g.gain.value=.027;n.connect(f).connect(g).connect(a.destination);n.start();const bird=()=>{if(!ambienceStarted)return;const t=a.currentTime,o=a.createOscillator(),gg=a.createGain();o.type='sine';o.frequency.setValueAtTime(1900+Math.random()*900,t);o.frequency.exponentialRampToValueAtTime(2800+Math.random()*900,t+.07);o.frequency.exponentialRampToValueAtTime(1600+Math.random()*500,t+.15);gg.gain.setValueAtTime(.0001,t);gg.gain.exponentialRampToValueAtTime(.018,t+.025);gg.gain.exponentialRampToValueAtTime(.0001,t+.17);o.connect(gg).connect(a.destination);o.start(t);o.stop(t+.18);setTimeout(bird,1800+Math.random()*4300)};setTimeout(bird,900)}function fireSound(){recPlay(rifleRec,.58,.94);const a=ctx(),t=a.currentTime;burst(.11,.42,1200,0,0);burst(.32,.24,180,0,.015);const o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.setValueAtTime(105,t);o.frequency.exponentialRampToValueAtTime(38,t+.22);g.gain.setValueAtTime(.34,t);g.gain.exponentialRampToValueAtTime(.0001,t+.24);o.connect(g).connect(a.destination);o.start(t);o.stop(t+.25);burst(.12,.08,700,0,.17);burst(.18,.045,500,0,.34)}function impactSound(vitalHit=false){const a=ctx(),t=a.currentTime;burst(.07,vitalHit?.14:.10,420,0,0);const o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.setValueAtTime(vitalHit?130:105,t);o.frequency.exponentialRampToValueAtTime(52,t+.11);g.gain.setValueAtTime(vitalHit?.12:.08,t);g.gain.exponentialRampToValueAtTime(.0001,t+.13);o.connect(g).connect(a.destination);o.start(t);o.stop(t+.14);burst(.16,.035,900,0,.03)}function reloadSound(){recPlay(reloadRec,.48,1);const a=ctx();for(const [delay,f] of [[0,340],[.20,250],[.68,380],[1.05,290]]){const t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();o.type='square';o.frequency.value=f;g.gain.setValueAtTime(.035,t);g.gain.exponentialRampToValueAtTime(.0001,t+.045);o.connect(g).connect(a.destination);o.start(t);o.stop(t+.05)}}function boltSound(){const a=ctx();for(const [delay,f] of [[0,520],[.10,310],[.28,430]]){const t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();o.type='square';o.frequency.value=f;g.gain.setValueAtTime(.025,t);g.gain.exponentialRampToValueAtTime(.0001,t+.035);o.connect(g).connect(a.destination);o.start(t);o.stop(t+.04)}}function hap(x=18){try{navigator.vibrate?.(x)}catch{}}
-function shoot(){if(!run||reloading||bolting)return;if(!shots){note('EMPTY · RELOAD');hap(8);return}shots--;totalShots++;bolting=true;$('#fire').style.opacity='.58';setTimeout(()=>{boltSound();},260);setTimeout(()=>{bolting=false;$('#fire').style.opacity='1'},720);recoil=.065;ui();fireSound();hap(32);shotflash.classList.remove('show');void shotflash.offsetWidth;shotflash.classList.add('show');ray.setFromCamera(new THREE.Vector2(0,0),C);const hh=ray.intersectObject(head,false)[0],vh=ray.intersectObject(vital,false)[0],bh=ray.intersectObject(body,false)[0],h=hh||vh||bh;if(h&&state!=='down'&&state!=='fall'){hits++;const zone=h.object.name;const n=zone==='head'?100:zone==='vital'?70:35;const bonus=zone==='head'?500:zone==='vital'?250:100;hp=clamp(hp-n,0,100);scoreVal+=bonus;ui();pop(n,zone!=='body');mark();impactSound(zone!=='body');state=hp<=0?'mortally':'wounded';st=0;const label=zone==='head'?'HEADSHOT':zone==='vital'?'VITAL HIT':'BODY HIT';note(label+' · '+n+' DMG',1000);hap(zone==='head'?[25,25,35]:zone==='vital'?[20,25,20]:18)}else{miss++;ui();note('MISS · DEER ALERTED',650);if(state==='idle'){state='alert';st=0;scoreVal=Math.max(0,scoreVal-25);ui()}}}function reloadGun(){if(!run||reloading||bolting||shots===5||!res)return;reloading=true;note('RELOADING…',1400);reloadSound();setTimeout(()=>{const n=Math.min(5-shots,res);shots+=n;res-=n;reloading=false;ui();note('READY',450)},1400)}
-$('#fire').onpointerdown=e=>{e.preventDefault();shoot()};$('#reload').onpointerdown=e=>{e.preventDefault();reloadGun()};$('#steady').onpointerdown=e=>{e.preventDefault();if(stamina>5){steady=true;e.currentTarget.classList.add('on');hap(8)}};$('#steady').onpointerup=$('#steady').onpointercancel=e=>{steady=false;$('#steady').classList.remove('on')};let drag=false,lx=0,ly=0;addEventListener('pointerdown',e=>{if(!run||e.target.closest?.('.btn'))return;drag=true;lx=e.clientX;ly=e.clientY});addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-lx,dy=e.clientY-ly;lx=e.clientX;ly=e.clientY;tyaw-=dx*.0013;tpitch=clamp(tpitch-dy*.0013,-.38,.28)});addEventListener('pointerup',()=>drag=false);addEventListener('pointercancel',()=>drag=false);
-function reset(){run=true;state='idle';st=0;hp=100;shots=5;res=15;steady=false;reloading=false;bolting=false;$('#fire').style.opacity='1';miss=0;totalShots=0;hits=0;scoreVal=0;stamina=100;homeX=-3.4+Math.random()*6.8;homeZ=-32-Math.random()*6;deer.position.set(homeX,ty(homeX,homeZ),homeZ);deer.rotation.set(0,0,0);yaw=tyaw=0;pitch=tpitch=-.02;startT=performance.now();$('#result').style.display='none';$('#steady').classList.remove('on');ui();note('FIND THE DEER',1000)}$('#start').onclick=()=>{ctx().resume();startAmbience();$('#intro').style.display='none';reset()};$('#again').onclick=reset;function finish(t,p){run=false;steady=false;$('#steady').classList.remove('on');$('#rt').textContent=t;$('#rp').textContent=p;$('#rscore').textContent=scoreVal;$('#racc').textContent=(totalShots?Math.round(hits/totalShots*100):0)+'%';$('#rtime').textContent=((performance.now()-startT)/1000).toFixed(1)+'s';$('#result').style.display='flex'}function face(dx,dz){if(Math.hypot(dx,dz)>.001)deer.rotation.y=Math.atan2(-dz,dx)}function move(dt){st+=dt;const ox=deer.position.x,oz=deer.position.z;if(state==='idle'){const x=homeX+Math.sin(st*.34)*2.7,z=homeZ+Math.cos(st*.22)*2.0;deer.position.x=damp(deer.position.x,x,1.1,dt);deer.position.z=damp(deer.position.z,z,1.1,dt)}else if(state==='alert'){deer.position.x+=dt*7.1;deer.position.z-=dt*1.8;if(st>4.8)finish('Deer Escaped','The deer heard the shots and reached the timber.')}else if(state==='wounded'){deer.position.x+=dt*6.2;deer.position.z-=dt*2.2;if(st>9.0)finish('Deer Escaped','The wounded deer reached the deep timber before your follow-up shot.')}else if(state==='mortally'){deer.position.x+=dt*(st<1.5?6.6:3.8);deer.position.z-=dt*1.9;if(st>2){state='fall';st=0}}else if(state==='fall'){deer.rotation.z=damp(deer.rotation.z,Math.PI/2,3,dt);if(st>1.2){state='down';scoreVal+=300;ui();setTimeout(()=>finish('Clean Hunt','Target secured. Clean follow-through.'),450)}}deer.position.y=ty(deer.position.x,deer.position.z);face(deer.position.x-ox,deer.position.z-oz)}
-function loop(n){requestAnimationFrame(loop);const dt=Math.min(.033,(n-last)/1000);last=n;if(run)move(dt);const t=n*.001;anim(t,state);if(steady){stamina=Math.max(0,stamina-dt*24);if(stamina<=0){steady=false;$('#steady').classList.remove('on')}}else stamina=Math.min(100,stamina+dt*14);ui();yaw=damp(yaw,tyaw,13,dt);pitch=damp(pitch,tpitch,13,dt);const sw=steady?.18:1;recoil=damp(recoil,0,14,dt);C.rotation.y=yaw+Math.sin(t*1.3)*.0018*sw;C.rotation.x=pitch+Math.sin(t*1.05+1)*.0012*sw+recoil;if(visual){const fast=['alert','wounded','mortally'].includes(state);visual.position.y=visualBaseY+(fast?Math.abs(Math.sin(t*10))*.035:Math.sin(t*2)*.008)}const dist=C.position.distanceTo(deer.position);range.textContent=Math.round(dist)+' m';read.textContent='6× · '+Math.round(dist)+' m · 100 m ZERO';const p=deer.position.clone().add(new THREE.Vector3(0,1.4,0)).project(C),off=Math.hypot(p.x,p.y)>.42;if(run&&off&&state!=='down'){const ang=Math.atan2(p.x,-p.y);track.style.opacity='.8';track.style.transform='translate('+(Math.sin(ang)*31)+'vmin,'+(-Math.cos(ang)*31)+'vmin) rotate('+(ang*180/Math.PI)+'deg)'}else track.style.opacity='0';R.render(S,C)}window.__huntDebug={get:()=>({run,state,hp,shots,res,steady,totalShots,hits,score:scoreVal,stamina,bolting,rigReady}),aimAtDeer:()=>{const dx=deer.position.x-C.position.x,dz=deer.position.z-C.position.z,dy=(deer.position.y+1.25)-C.position.y;tyaw=Math.atan2(dx,-dz);tpitch=Math.atan2(dy,Math.hypot(dx,dz));yaw=tyaw;pitch=tpitch},fire:shoot,reload:reloadGun,reset};requestAnimationFrame(loop);addEventListener('resize',()=>{R.setSize(innerWidth,innerHeight,false);C.aspect=innerWidth/innerHeight;C.updateProjectionMatrix()});
+const $ = (s) => document.querySelector(s);
+const canvas = $('#g');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.55));
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.03;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x879887);
+scene.fog = new THREE.FogExp2(0x728173, 0.0175);
+
+const camera = new THREE.PerspectiveCamera(17.5, innerWidth / innerHeight, 0.08, 190);
+camera.position.set(0, 1.74, 0);
+camera.rotation.order = 'YXZ';
+
+scene.add(new THREE.HemisphereLight(0xdce5d9, 0x253026, 1.34));
+const sun = new THREE.DirectionalLight(0xffe7c4, 2.15);
+sun.position.set(-34, 43, 21);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = -55;
+sun.shadow.camera.right = 55;
+sun.shadow.camera.top = 55;
+sun.shadow.camera.bottom = -55;
+sun.shadow.bias = -0.00035;
+scene.add(sun);
+
+const terrainY = (x, z) => Math.sin(x * 0.085) * 0.27 + Math.cos(z * 0.09) * 0.25 + Math.sin((x + z) * 0.041) * 0.19;
+const groundGeo = new THREE.PlaneGeometry(180, 180, 76, 76);
+groundGeo.rotateX(-Math.PI / 2);
+for (let i = 0; i < groundGeo.attributes.position.count; i++) {
+  const x = groundGeo.attributes.position.getX(i);
+  const z = groundGeo.attributes.position.getZ(i);
+  groundGeo.attributes.position.setY(i, terrainY(x, z));
+}
+groundGeo.computeVertexNormals();
+const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x344d32, roughness: 1 }));
+ground.receiveShadow = true;
+scene.add(ground);
+
+let seed = 4182026;
+const rnd = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
+const dummy = new THREE.Object3D();
+
+function buildForest() {
+  const trunkGeo = new THREE.CylinderGeometry(0.16, 0.29, 3.8, 7);
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4b3a29, roughness: 1 });
+  const crownGeo = new THREE.ConeGeometry(1.25, 4.3, 8);
+  const crownMat = new THREE.MeshStandardMaterial({ color: 0x29482d, roughness: 1 });
+  const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, 205);
+  const crowns = new THREE.InstancedMesh(crownGeo, crownMat, 205);
+  trunks.castShadow = crowns.castShadow = true;
+
+  for (let i = 0; i < 205; i++) {
+    const a = rnd() * Math.PI * 2;
+    const r = 10 + Math.sqrt(rnd()) * 73;
+    const x = Math.cos(a) * r;
+    const z = Math.sin(a) * r;
+    const s = 0.62 + rnd() * 1.28;
+    const y = terrainY(x, z);
+    dummy.position.set(x, y + 1.9 * s, z);
+    dummy.scale.setScalar(s);
+    dummy.rotation.y = rnd() * Math.PI * 2;
+    dummy.updateMatrix();
+    trunks.setMatrixAt(i, dummy.matrix);
+    dummy.position.set(x, y + 4.15 * s, z);
+    dummy.scale.set(s * (0.82 + rnd() * 0.22), s * (0.88 + rnd() * 0.18), s * (0.82 + rnd() * 0.22));
+    dummy.updateMatrix();
+    crowns.setMatrixAt(i, dummy.matrix);
+  }
+  scene.add(trunks, crowns);
+
+  const bushGeo = new THREE.IcosahedronGeometry(0.42, 1);
+  const bushMat = new THREE.MeshStandardMaterial({ color: 0x45633d, roughness: 1 });
+  const bushes = new THREE.InstancedMesh(bushGeo, bushMat, 130);
+  for (let i = 0; i < 130; i++) {
+    const a = rnd() * Math.PI * 2;
+    const r = 8 + Math.sqrt(rnd()) * 68;
+    const x = Math.cos(a) * r;
+    const z = Math.sin(a) * r;
+    const s = 0.4 + rnd() * 0.8;
+    dummy.position.set(x, terrainY(x, z) + 0.2 * s, z);
+    dummy.scale.set(s * 1.35, s * 0.62, s * 1.08);
+    dummy.rotation.set(rnd() * 0.2, rnd() * Math.PI * 2, rnd() * 0.15);
+    dummy.updateMatrix();
+    bushes.setMatrixAt(i, dummy.matrix);
+  }
+  scene.add(bushes);
+}
+buildForest();
+
+const rifles = [
+  { id: 'ranger', name: 'RANGER .243', tag: 'Balanced starter', price: 0, mag: 5, damage: 1, reload: 1.25, recoil: 1, sway: 1, zoom: 6 },
+  { id: 'timber', name: 'TIMBER .308', tag: 'Harder body hits', price: 250, mag: 4, damage: 1.18, reload: 1.35, recoil: 1.08, sway: 0.92, zoom: 6 },
+  { id: 'whisper', name: 'WHISPER .300', tag: 'Very steady aim', price: 600, mag: 5, damage: 1.08, reload: 1.1, recoil: 0.68, sway: 0.58, zoom: 7 },
+  { id: 'magnum', name: 'MAGNUM .338', tag: 'High power, small mag', price: 1200, mag: 3, damage: 1.55, reload: 1.5, recoil: 1.35, sway: 0.92, zoom: 8 },
+  { id: 'apex', name: 'APEX .50', tag: 'Extreme stopping power', price: 2200, mag: 2, damage: 2.15, reload: 1.75, recoil: 1.7, sway: 1.04, zoom: 10 }
+];
+
+const saveKey = 'forest-stalker-v5';
+let save = { coins: 0, bag: 0, kills: 0, owned: ['ranger'], equipped: 'ranger' };
+try { save = { ...save, ...(JSON.parse(localStorage.getItem(saveKey)) || {}) }; } catch {}
+if (!Array.isArray(save.owned) || !save.owned.includes('ranger')) save.owned = ['ranger'];
+if (!rifles.some(r => r.id === save.equipped) || !save.owned.includes(save.equipped)) save.equipped = 'ranger';
+const persist = () => { try { localStorage.setItem(saveKey, JSON.stringify(save)); } catch {} };
+let rifle = rifles.find(r => r.id === save.equipped) || rifles[0];
+let ammo = rifle.mag;
+let reserveAmmo = Infinity;
+let reloading = false;
+let bolting = false;
+
+const deer = [];
+const hitboxes = [];
+const invisible = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+
+function limb(material, upperLen, lowerLen, hoofMat) {
+  const hip = new THREE.Group();
+  const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.10, upperLen, 9), material);
+  upper.position.y = -upperLen * 0.5;
+  upper.castShadow = true;
+  hip.add(upper);
+  const knee = new THREE.Group();
+  knee.position.y = -upperLen;
+  hip.add(knee);
+  const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.065, lowerLen, 8), material);
+  lower.position.y = -lowerLen * 0.5;
+  lower.castShadow = true;
+  knee.add(lower);
+  const hoof = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.09, 0.18), hoofMat);
+  hoof.position.set(0, -lowerLen - 0.02, 0.035);
+  hoof.castShadow = true;
+  knee.add(hoof);
+  return { hip, knee };
+}
+
+function createDeerVisual(index) {
+  const root = new THREE.Group();
+  const coatColors = [0x795033, 0x855936, 0x6e472f, 0x91613b];
+  const coat = new THREE.MeshStandardMaterial({ color: coatColors[index % coatColors.length], roughness: 0.95 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2f241d, roughness: 1 });
+  const cream = new THREE.MeshStandardMaterial({ color: 0xc1a57d, roughness: 1 });
+  const antler = new THREE.MeshStandardMaterial({ color: 0x4b3a28, roughness: 1 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x080908, roughness: 0.8 });
+
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 16), coat);
+  body.scale.set(0.58, 0.67, 1.28);
+  body.position.set(0, 1.22, 0);
+  body.castShadow = true;
+  root.add(body);
+
+  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.72, 18, 14), coat);
+  chest.scale.set(0.68, 0.82, 0.72);
+  chest.position.set(0, 1.35, 0.68);
+  chest.castShadow = true;
+  root.add(chest);
+
+  const neck = new THREE.Group();
+  neck.position.set(0, 1.56, 0.83);
+  neck.rotation.x = -0.43;
+  root.add(neck);
+  const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.34, 1.18, 12), coat);
+  neckMesh.position.y = 0.55;
+  neckMesh.castShadow = true;
+  neck.add(neckMesh);
+
+  const headPivot = new THREE.Group();
+  headPivot.position.set(0, 1.04, 0.28);
+  neck.add(headPivot);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 18, 14), coat);
+  head.scale.set(0.72, 0.67, 1.12);
+  head.position.set(0, 0.07, 0.27);
+  head.castShadow = true;
+  headPivot.add(head);
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10), dark);
+  muzzle.scale.set(0.7, 0.58, 1.18);
+  muzzle.position.set(0, -0.02, 0.63);
+  muzzle.castShadow = true;
+  headPivot.add(muzzle);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), black);
+  nose.scale.set(1.25, 0.72, 0.7);
+  nose.position.set(0, -0.01, 0.83);
+  headPivot.add(nose);
+  for (const sx of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.38, 9), coat);
+    ear.position.set(0.22 * sx, 0.35, 0.11);
+    ear.rotation.z = sx * -0.28;
+    ear.castShadow = true;
+    headPivot.add(ear);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.042, 9, 7), black);
+    eye.position.set(0.285 * sx, 0.13, 0.43);
+    headPivot.add(eye);
+  }
+
+  const male = index % 3 !== 1;
+  if (male) {
+    const branch = (x, y, z, rx, rz, len = 0.55, rad = 0.027) => {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad * 0.68, len, 7), antler);
+      m.position.set(x, y, z);
+      m.rotation.set(rx, 0, rz);
+      m.castShadow = true;
+      headPivot.add(m);
+    };
+    for (const sx of [-1, 1]) {
+      branch(0.12 * sx, 0.55, 0.12, 0.08 * sx, -0.12 * sx, 0.68, 0.035);
+      branch(0.20 * sx, 0.83, 0.12, 0.48 * sx, -0.22 * sx, 0.42, 0.026);
+      branch(0.09 * sx, 0.77, 0.22, -0.38 * sx, 0.12 * sx, 0.35, 0.023);
+    }
+  }
+
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.48, 9), cream);
+  tail.position.set(0, 1.46, -1.2);
+  tail.rotation.x = Math.PI * 0.62;
+  tail.castShadow = true;
+  root.add(tail);
+
+  const legs = [];
+  const legSpots = [[-0.34, 0.68], [0.34, 0.68], [-0.34, -0.72], [0.34, -0.72]];
+  legSpots.forEach(([x, z]) => {
+    const l = limb(coat, 0.72, 0.62, dark);
+    l.hip.position.set(x, 0.98, z);
+    root.add(l.hip);
+    legs.push(l);
+  });
+
+  const bodyHit = new THREE.Mesh(new THREE.SphereGeometry(0.86, 11, 9), invisible);
+  bodyHit.scale.set(0.72, 0.78, 1.28);
+  bodyHit.position.set(0, 1.28, 0.06);
+  const vitalHit = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 8), invisible);
+  vitalHit.position.set(0, 1.3, 0.64);
+  const headHit = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 8), invisible);
+  headHit.position.set(0, 2.42, 1.36);
+  root.add(bodyHit, vitalHit, headHit);
+
+  return { root, legs, neck, headPivot, tail, bodyHit, vitalHit, headHit };
+}
+
+function randomSpawn(minR = 21, maxR = 55) {
+  const a = Math.random() * Math.PI * 2;
+  const r = minR + Math.random() * (maxR - minR);
+  return new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r);
+}
+
+function setRoamTarget(d, nearby = true) {
+  const base = d.root.position;
+  const a = Math.random() * Math.PI * 2;
+  const r = nearby ? 4 + Math.random() * 8 : 14 + Math.random() * 24;
+  d.target.set(base.x + Math.cos(a) * r, 0, base.z + Math.sin(a) * r);
+  const dist = Math.hypot(d.target.x, d.target.z);
+  if (dist < 14 || dist > 66) {
+    const p = randomSpawn(20, 55);
+    d.target.copy(p);
+  }
+}
+
+function spawnDeer(index, existing = null) {
+  const visual = existing || createDeerVisual(index);
+  if (!existing) scene.add(visual.root);
+  const pos = randomSpawn(22, 52);
+  visual.root.position.set(pos.x, terrainY(pos.x, pos.z), pos.z);
+  visual.root.rotation.y = Math.random() * Math.PI * 2;
+  visual.root.visible = true;
+  const d = {
+    ...visual,
+    index,
+    hp: 100,
+    state: 'roam',
+    timer: Math.random() * 3,
+    speed: 0.68 + Math.random() * 0.28,
+    target: new THREE.Vector3(),
+    phase: Math.random() * Math.PI * 2,
+    respawnAt: 0,
+    lastHitAt: 0
+  };
+  [d.bodyHit, d.vitalHit, d.headHit].forEach((mesh, i) => {
+    mesh.userData.deer = d;
+    mesh.userData.zone = ['body', 'vital', 'head'][i];
+    hitboxes.push(mesh);
+  });
+  setRoamTarget(d, true);
+  return d;
+}
+
+for (let i = 0; i < 7; i++) deer.push(spawnDeer(i));
+
+const killsEl = $('#kills');
+const coinsEl = $('#coins');
+const bagEl = $('#bag');
+const ammoEl = $('#ammo');
+const reserveEl = $('#reserve');
+const weaponPill = $('#weaponPill');
+const targetHud = $('#targetHud');
+const targetHpFill = $('#targetHpFill');
+const targetHpText = $('#targetHpText');
+const targetName = $('#targetName');
+const scopeRead = $('#scopeRead');
+const message = $('#message');
+const damageEl = $('#damage');
+const hitMark = $('#hitMark');
+const blood = $('#blood');
+const shotFlash = $('#shotFlash');
+const shop = $('#shop');
+const shopBag = $('#shopBag');
+const shopCoins = $('#shopCoins');
+const rifleList = $('#rifleList');
+const sellAllBtn = $('#sellAllBtn');
+
+function updateHud() {
+  killsEl.textContent = save.kills;
+  coinsEl.textContent = save.coins;
+  bagEl.textContent = save.bag;
+  ammoEl.textContent = ammo;
+  reserveEl.textContent = '∞';
+  weaponPill.textContent = rifle.name;
+  shopBag.textContent = save.bag;
+  shopCoins.textContent = save.coins;
+  sellAllBtn.disabled = save.bag <= 0;
+}
+updateHud();
+
+function note(text, ms = 700) {
+  message.textContent = text;
+  message.classList.add('show');
+  clearTimeout(note.t);
+  note.t = setTimeout(() => message.classList.remove('show'), ms);
+}
+
+function popDamage(value, zone) {
+  damageEl.textContent = `-${value} ${zone.toUpperCase()}`;
+  damageEl.style.color = zone === 'head' ? '#ffe27a' : zone === 'vital' ? '#ffbd76' : '#ff8c77';
+  damageEl.classList.remove('show');
+  void damageEl.offsetWidth;
+  damageEl.classList.add('show');
+  hitMark.classList.remove('show');
+  void hitMark.offsetWidth;
+  hitMark.classList.add('show');
+  blood.classList.remove('show');
+  void blood.offsetWidth;
+  blood.classList.add('show');
+}
+
+function flashShot() {
+  shotFlash.classList.remove('show');
+  void shotFlash.offsetWidth;
+  shotFlash.classList.add('show');
+}
+
+function haptic(pattern = 18) { try { navigator.vibrate?.(pattern); } catch {} }
+
+// Sound hooks are intentionally silent in V5. User-provided final audio can be dropped here later.
+const sound = { shot() {}, hit() {}, reload() {}, nature() {} };
+
+let yaw = 0;
+let pitch = -0.025;
+let targetYaw = 0;
+let targetPitch = -0.025;
+let recoil = 0;
+let dragging = false;
+let lastX = 0;
+let lastY = 0;
+let lastFrame = performance.now();
+let lastTarget = null;
+let lastTargetSeen = 0;
+let shopOpen = false;
+const ray = new THREE.Raycaster();
+const center = new THREE.Vector2(0, 0);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const damp = (a, b, l, dt) => THREE.MathUtils.lerp(a, b, 1 - Math.exp(-l * dt));
+
+function currentScopeTarget() {
+  let best = null;
+  let bestDist = Infinity;
+  for (const d of deer) {
+    if (!d.root.visible || d.state === 'down') continue;
+    const p = d.root.position.clone().add(new THREE.Vector3(0, 1.45, 0)).project(camera);
+    if (p.z < -1 || p.z > 1) continue;
+    const centerDist = Math.hypot(p.x, p.y);
+    if (centerDist < bestDist) {
+      bestDist = centerDist;
+      best = d;
+    }
+  }
+  return bestDist < 0.42 ? best : null;
+}
+
+function updateTargetHud(now) {
+  const t = currentScopeTarget();
+  if (t) {
+    lastTarget = t;
+    lastTargetSeen = now;
+  }
+  const show = lastTarget && lastTarget.root.visible && now - lastTargetSeen < 1300;
+  targetHud.classList.toggle('active', !!show);
+  if (show) {
+    targetHpText.textContent = Math.max(0, Math.ceil(lastTarget.hp));
+    targetHpFill.style.width = `${clamp(lastTarget.hp, 0, 100)}%`;
+    targetName.textContent = lastTarget.index % 3 === 1 ? 'DOE' : 'STAG';
+    const dist = camera.position.distanceTo(lastTarget.root.position);
+    scopeRead.textContent = `${rifle.zoom}× · ${Math.round(dist)} m`;
+  } else {
+    scopeRead.textContent = `${rifle.zoom}× · SCANNING`;
+  }
+}
+
+function setFovFromRifle() {
+  camera.fov = 105 / rifle.zoom;
+  camera.updateProjectionMatrix();
+}
+setFovFromRifle();
+
+function alertDeer(d, hard = false) {
+  if (!d || d.state === 'down') return;
+  d.state = 'run';
+  d.timer = hard ? 4.8 : 3.2;
+  const away = d.root.position.clone().normalize();
+  const side = new THREE.Vector3(-away.z, 0, away.x).multiplyScalar((Math.random() - 0.5) * 12);
+  d.target.copy(d.root.position).add(away.multiplyScalar(18 + Math.random() * 14)).add(side);
+}
+
+function harvest(d) {
+  if (d.state === 'down') return;
+  d.state = 'down';
+  d.timer = 0;
+  d.hp = 0;
+  save.kills += 1;
+  save.bag += 1;
+  persist();
+  updateHud();
+  note(`HUNT #${save.kills} · +1 DEER`, 1100);
+  haptic([25, 25, 35]);
+  d.respawnAt = performance.now() + 2200;
+  setTimeout(() => {
+    if (d.state !== 'down') return;
+    d.root.visible = false;
+  }, 1250);
+}
+
+function respawnDeer(d) {
+  const pos = randomSpawn(22, 54);
+  d.root.position.set(pos.x, terrainY(pos.x, pos.z), pos.z);
+  d.root.rotation.set(0, Math.random() * Math.PI * 2, 0);
+  d.root.scale.setScalar(0.92 + Math.random() * 0.16);
+  d.root.visible = true;
+  d.hp = 100;
+  d.state = 'roam';
+  d.timer = Math.random() * 2;
+  d.speed = 0.65 + Math.random() * 0.32;
+  d.respawnAt = 0;
+  setRoamTarget(d, true);
+}
+
+function shoot() {
+  if (shopOpen || reloading || bolting) return;
+  if (ammo <= 0) {
+    note('RELOAD');
+    haptic(8);
+    return;
+  }
+  ammo--;
+  bolting = true;
+  updateHud();
+  recoil += 0.046 * rifle.recoil;
+  flashShot();
+  sound.shot();
+  haptic(24);
+  setTimeout(() => { bolting = false; }, 620 + rifle.recoil * 90);
+
+  ray.setFromCamera(center, camera);
+  const hits = ray.intersectObjects(hitboxes, false).filter(h => h.object.userData.deer?.state !== 'down' && h.object.userData.deer?.root.visible);
+  const hit = hits[0];
+  if (hit) {
+    const d = hit.object.userData.deer;
+    const zone = hit.object.userData.zone;
+    const base = zone === 'head' ? 100 : zone === 'vital' ? 72 : 38;
+    const dealt = Math.min(100, Math.round(base * rifle.damage));
+    d.hp = Math.max(0, d.hp - dealt);
+    d.lastHitAt = performance.now();
+    lastTarget = d;
+    lastTargetSeen = performance.now();
+    popDamage(dealt, zone);
+    sound.hit();
+    if (d.hp <= 0) {
+      harvest(d);
+    } else {
+      alertDeer(d, true);
+      note(`${zone === 'head' ? 'HEAD' : zone === 'vital' ? 'VITAL' : 'BODY'} HIT · ${Math.ceil(d.hp)} HP`, 820);
+      haptic(zone === 'vital' ? [16, 20, 16] : 14);
+    }
+    deer.forEach(other => {
+      if (other !== d && other.root.visible && other.state !== 'down' && other.root.position.distanceTo(d.root.position) < 13) alertDeer(other, false);
+    });
+  } else {
+    note('MISS');
+    const near = currentScopeTarget();
+    if (near) alertDeer(near, true);
+  }
+}
+
+function reloadGun() {
+  if (shopOpen || reloading || bolting || ammo === rifle.mag) return;
+  reloading = true;
+  note('RELOADING…', Math.round(rifle.reload * 1000));
+  sound.reload();
+  setTimeout(() => {
+    ammo = rifle.mag;
+    reloading = false;
+    updateHud();
+    note('READY', 420);
+  }, rifle.reload * 1000);
+}
+
+function renderShop() {
+  updateHud();
+  rifleList.innerHTML = '';
+  for (const r of rifles) {
+    const owned = save.owned.includes(r.id);
+    const equipped = save.equipped === r.id;
+    const card = document.createElement('div');
+    card.className = `rifleCard${equipped ? ' equipped' : ''}`;
+    const left = document.createElement('div');
+    left.innerHTML = `<div class="rifleName">${r.name}</div><div class="rifleTag">${r.tag}</div><div class="statsRow"><span class="stat">DMG ${Math.round(r.damage * 100)}%</span><span class="stat">MAG ${r.mag}</span><span class="stat">${r.zoom}× ZOOM</span><span class="stat">STABILITY ${Math.round(100 / r.sway)}%</span></div>`;
+    const btn = document.createElement('button');
+    btn.className = `rifleAction${owned ? '' : ' locked'}`;
+    btn.textContent = equipped ? 'EQUIPPED' : owned ? 'EQUIP' : `◉ ${r.price}`;
+    btn.disabled = equipped;
+    btn.onclick = () => {
+      if (equipped) return;
+      if (!owned) {
+        if (save.coins < r.price) { note('NOT ENOUGH COINS', 900); return; }
+        save.coins -= r.price;
+        save.owned.push(r.id);
+      }
+      save.equipped = r.id;
+      rifle = r;
+      ammo = rifle.mag;
+      reserveAmmo = Infinity;
+      persist();
+      setFovFromRifle();
+      renderShop();
+      updateHud();
+      note(`${r.name} EQUIPPED`, 900);
+    };
+    card.append(left, btn);
+    rifleList.append(card);
+  }
+}
+
+function openShop() {
+  shopOpen = true;
+  shop.classList.add('open');
+  shop.setAttribute('aria-hidden', 'false');
+  renderShop();
+}
+function closeShop() {
+  shopOpen = false;
+  shop.classList.remove('open');
+  shop.setAttribute('aria-hidden', 'true');
+}
+
+$('#shopBtn').onpointerdown = (e) => { e.preventDefault(); openShop(); };
+$('#closeShop').onclick = closeShop;
+$('#fireBtn').onpointerdown = (e) => { e.preventDefault(); shoot(); };
+$('#reloadBtn').onpointerdown = (e) => { e.preventDefault(); reloadGun(); };
+sellAllBtn.onclick = () => {
+  if (save.bag <= 0) return;
+  const earned = save.bag * 45;
+  save.coins += earned;
+  save.bag = 0;
+  persist();
+  updateHud();
+  renderShop();
+  note(`SOLD · +${earned} COINS`, 1000);
+  haptic([12, 35, 12]);
+};
+
+addEventListener('pointerdown', (e) => {
+  if (shopOpen || e.target.closest?.('button') || e.target.closest?.('.shop')) return;
+  dragging = true;
+  lastX = e.clientX;
+  lastY = e.clientY;
+});
+addEventListener('pointermove', (e) => {
+  if (!dragging || shopOpen) return;
+  const dx = e.clientX - lastX;
+  const dy = e.clientY - lastY;
+  lastX = e.clientX;
+  lastY = e.clientY;
+  const sensitivity = 0.00155 * (6 / rifle.zoom);
+  targetYaw -= dx * sensitivity;
+  targetPitch = clamp(targetPitch - dy * sensitivity, -0.47, 0.35);
+});
+addEventListener('pointerup', () => { dragging = false; });
+addEventListener('pointercancel', () => { dragging = false; });
+
+function animateDeer(d, dt, now) {
+  if (d.state === 'down') {
+    d.timer += dt;
+    d.root.rotation.z = damp(d.root.rotation.z, Math.PI * 0.48, 2.8, dt);
+    d.root.position.y = terrainY(d.root.position.x, d.root.position.z);
+    if (d.respawnAt && now >= d.respawnAt) respawnDeer(d);
+    return;
+  }
+
+  d.timer -= dt;
+  const to = d.target.clone().sub(d.root.position);
+  to.y = 0;
+  const dist = to.length();
+  if (dist < 1.2 || d.timer < -5) setRoamTarget(d, d.state === 'roam');
+  const dir = dist > 0.001 ? to.normalize() : new THREE.Vector3(0, 0, 1);
+  const running = d.state === 'run';
+  const speed = running ? 6.2 : d.speed;
+  d.root.position.addScaledVector(dir, speed * dt);
+  d.root.position.y = terrainY(d.root.position.x, d.root.position.z);
+  const targetRot = Math.atan2(dir.x, dir.z);
+  d.root.rotation.y = damp(d.root.rotation.y, targetRot, running ? 8 : 3.2, dt);
+  d.root.rotation.z = damp(d.root.rotation.z, 0, 5, dt);
+
+  if (running && d.timer <= 0) {
+    d.state = 'roam';
+    setRoamTarget(d, true);
+  }
+  const radius = Math.hypot(d.root.position.x, d.root.position.z);
+  if (radius > 69 || radius < 10) {
+    const p = randomSpawn(22, 54);
+    d.root.position.x = p.x;
+    d.root.position.z = p.z;
+    setRoamTarget(d, true);
+  }
+
+  const f = running ? 11.5 : 3.8;
+  const amp = running ? 0.72 : 0.22;
+  const p = now * 0.001 * f + d.phase;
+  const s1 = Math.sin(p) * amp;
+  const s2 = Math.sin(p + Math.PI) * amp;
+  d.legs[0].hip.rotation.x = s1;
+  d.legs[1].hip.rotation.x = s2;
+  d.legs[2].hip.rotation.x = s2;
+  d.legs[3].hip.rotation.x = s1;
+  d.legs[0].knee.rotation.x = Math.max(0, -s1) * 0.52;
+  d.legs[1].knee.rotation.x = Math.max(0, -s2) * 0.52;
+  d.legs[2].knee.rotation.x = Math.max(0, -s2) * 0.68;
+  d.legs[3].knee.rotation.x = Math.max(0, -s1) * 0.68;
+  d.neck.rotation.z = Math.sin(p * 0.32) * (running ? 0.045 : 0.018);
+  d.headPivot.rotation.y = Math.sin(p * 0.21) * (running ? 0.03 : 0.10);
+  d.headPivot.rotation.x = Math.sin(p * 0.5) * (running ? 0.025 : 0.04);
+  d.tail.rotation.z = Math.sin(p * 0.7) * 0.16;
+  d.root.position.y += Math.abs(Math.sin(p)) * (running ? 0.055 : 0.008);
+}
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.033, (now - lastFrame) / 1000);
+  lastFrame = now;
+
+  if (!shopOpen) deer.forEach(d => animateDeer(d, dt, now));
+
+  yaw = damp(yaw, targetYaw, 15, dt);
+  pitch = damp(pitch, targetPitch, 15, dt);
+  const t = now * 0.001;
+  const sway = 0.00145 * rifle.sway;
+  const sx = Math.sin(t * 1.18) * sway + Math.sin(t * 0.46) * sway * 0.42;
+  const sy = Math.sin(t * 0.92 + 1.2) * sway * 0.74;
+  recoil = damp(recoil, 0, 13.5, dt);
+  camera.rotation.y = yaw + sx;
+  camera.rotation.x = pitch + sy + recoil;
+
+  updateTargetHud(now);
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(loop);
+
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+window.__forestStalker = {
+  version: 5,
+  state: () => ({ kills: save.kills, coins: save.coins, bag: save.bag, deerAlive: deer.filter(d => d.root.visible && d.state !== 'down').length, rifle: rifle.id, ammo, reserveAmmo: 'infinite' }),
+  deer
+};
