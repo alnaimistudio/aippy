@@ -42,7 +42,6 @@ jobs:
           node --check "$ROOT/game-render.js"
           node --check "$ROOT/rod-assets.js"
           node --check "$ROOT/fish-assets.js"
-          for f in "$ROOT"/assets/fish/*.js; do node --check "$f"; done
           python3 <<'PY'
           from pathlib import Path
           root = Path('games/deep-catch')
@@ -50,8 +49,19 @@ jobs:
           css = (root/'style.css').read_text(encoding='utf-8')
           rod = (root/'rod-assets.js').read_text(encoding='utf-8')
           game = (root/'game-render.js').read_text(encoding='utf-8')
+          fish_files = [
+              'aqua-turtle.js',
+              'inferno-fangfish.js',
+              'leviathan-whale.js',
+              'moon-catfish.js',
+              'fish-pack-a.js',
+              'fish-pack-b.js',
+          ]
           fish_parts = []
-          for p in sorted((root/'assets/fish').glob('*.js')):
+          for name in fish_files:
+              p = root/'assets'/'fish'/name
+              if not p.is_file() or p.stat().st_size == 0:
+                  raise SystemExit(f'Missing fish asset script: {p}')
               fish_parts.append(p.read_text(encoding='utf-8'))
           fish = '\n'.join(fish_parts)
           css_ref = '<link rel="stylesheet" href="style.css?v=3.1" />'
@@ -114,15 +124,34 @@ jobs:
           const { chromium } = require('playwright');
           const publicUrl = process.env.PUBLIC_URL;
           async function verify(page, url, label) {
-            const errors=[];
+            const pageErrors=[];
             const failed=[];
-            page.on('pageerror', e => errors.push('pageerror: '+e.message));
-            page.on('console', m => { if (m.type()==='error') errors.push('console: '+m.text()); });
+            page.on('pageerror', e => pageErrors.push(e.message));
             page.on('requestfailed', r => failed.push(r.url()+' :: '+(r.failure()?.errorText||'failed')));
             console.log('VERIFY_START='+label+' '+url);
             const response = await page.goto(url, {waitUntil:'domcontentloaded', timeout:90000});
             if (!response || !response.ok()) throw new Error(label+': HTTP failure');
             await page.locator('#play').waitFor({state:'visible', timeout:90000});
+
+            const assetCheck = await page.evaluate(async () => {
+              async function validateMap(map) {
+                const entries=Object.entries(map||{}), bad=[];
+                for (const [key,src] of entries) {
+                  if (typeof src!=='string' || !src.startsWith('data:image/')) { bad.push(key+':bad-src'); continue; }
+                  const img=new Image(); img.src=src;
+                  try { await img.decode(); if (!img.naturalWidth) bad.push(key+':zero-size'); }
+                  catch(e) { bad.push(key+':decode'); }
+                }
+                return {count:entries.length,bad};
+              }
+              return {
+                fish: await validateMap(window.FISH_ASSETS_DATA),
+                rods: await validateMap(window.ROD_ASSETS)
+              };
+            });
+            if (assetCheck.fish.count < 10 || assetCheck.fish.bad.length) throw new Error(label+': fish assets invalid '+JSON.stringify(assetCheck.fish));
+            if (assetCheck.rods.count < 8 || assetCheck.rods.bad.length) throw new Error(label+': rod assets invalid '+JSON.stringify(assetCheck.rods));
+
             await page.locator('#play').click();
             await page.locator('#c').waitFor({state:'visible', timeout:15000});
             await page.locator('#act').waitFor({state:'visible', timeout:15000});
@@ -134,7 +163,6 @@ jobs:
             const cards=await page.locator('#shopGrid .shopCard').count();
             if (cards < 8) throw new Error(label+': rod shop incomplete, cards='+cards);
             await page.locator('#closeShop').click();
-            await page.locator('#shop:not(.open)').waitFor({state:'attached', timeout:10000});
 
             await page.locator('#act').click();
             await page.waitForTimeout(1400);
@@ -150,10 +178,10 @@ jobs:
             const score=Number((await page.locator('#score').textContent()||'0').trim());
             const coins=Number((await page.locator('#coins').textContent()||'0').trim());
             if (!Number.isFinite(score) || !Number.isFinite(coins)) throw new Error(label+': HUD values invalid');
-            if (errors.length) throw new Error(label+': '+errors.join(' | '));
+            if (pageErrors.length) throw new Error(label+': page errors: '+pageErrors.join(' | '));
             const criticalFailures=failed.filter(x=>!x.includes('favicon'));
             if (criticalFailures.length) throw new Error(label+': request failures: '+criticalFailures.join(' | '));
-            console.log('VERIFY_OK='+label+' CARDS='+cards+' ACTION='+actionAfterCast+' DEPTH='+depth+' SCORE='+score+' COINS='+coins);
+            console.log('VERIFY_OK='+label+' FISH='+assetCheck.fish.count+' RODS='+assetCheck.rods.count+' CARDS='+cards+' ACTION='+actionAfterCast+' DEPTH='+depth+' SCORE='+score+' COINS='+coins);
           }
           (async()=>{
             const browser=await chromium.launch({headless:true});
