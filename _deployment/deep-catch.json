@@ -1,0 +1,11 @@
+{
+  "game": "Deep Catch",
+  "url": "https://htmlpreview.github.io/?https://github.com/alnaimistudio/aippy/blob/main/games/deep-catch/play.html",
+  "commit": "3345b5b27648f86ba7535630c90aee2d3d86881b",
+  "run_id": "32150351537",
+  "standalone_build": "success",
+  "standalone_publish": "success",
+  "browser_gameplay": "failure",
+  "public_http": "success",
+  "checked_at_utc": "2026-08-18T14:46:41Z"
+}
