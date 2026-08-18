@@ -1,14 +1,10 @@
 {
   "game": "Ninja Climb",
-  "url": "https://alnaimistudio.github.io/aippy/ninja-climb/",
-  "commit": "cd99a1f6a8eac3ce5594ba9410a7d21ba9b9ff42",
-  "run_id": "32148752181",
+  "url": "https://htmlpreview.github.io/?https://github.com/alnaimistudio/aippy/blob/main/ninja-climb/index.html",
+  "commit": "ccf305db81940e5b8d4147bb3335c218047658ab",
+  "run_id": "32149079876",
   "static_checks": "success",
-  "local_http": "success",
-  "browser_gameplay": "success",
-  "pages_config": "failure",
-  "artifact_upload": "success",
-  "pages_deploy": "failure",
-  "live_http": "skipped",
-  "checked_at_utc": "2026-08-18T14:30:57Z"
+  "browser_gameplay": "failure",
+  "public_http": "success",
+  "checked_at_utc": "2026-08-18T14:34:14Z"
 }
