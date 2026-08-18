@@ -1,0 +1,7 @@
+Forest Stalker V5
+- Endless 360 hunting
+- 7 animated deer
+- Persistent hunts, harvested deer and coins
+- Hunting shop with 5 rifles
+- Simplified mobile controls
+- Sound hooks ready for final user-provided audio
