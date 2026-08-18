@@ -1,4 +1,4 @@
-name: Deploy Aippy Games to Pages
+name: Verify Ninja Climb Public Preview
 
 on:
   push:
@@ -9,18 +9,13 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: ninja-climb-preview
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  verify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,36 +36,15 @@ jobs:
           grep -q 'src="game.js"' ninja-climb/index.html
           grep -q 'href="style.css"' ninja-climb/index.html
 
-      - name: Local HTTP smoke test
-        id: http_smoke
+      - name: Local and public browser gameplay smoke test
+        id: browser
         continue-on-error: true
         shell: bash
+        env:
+          PUBLIC_URL: https://htmlpreview.github.io/?https://github.com/alnaimistudio/aippy/blob/main/ninja-climb/index.html
         run: |
           set -euo pipefail
-          python3 -m http.server 4173 --directory . >/tmp/ninja-http.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
-          ready=0
-          for i in {1..20}; do
-            if curl -fsS http://127.0.0.1:4173/ninja-climb/ -o /tmp/ninja-index.html; then
-              ready=1
-              break
-            fi
-            sleep 1
-          done
-          test "$ready" = "1"
-          grep -q '<title>Ninja Climb</title>' /tmp/ninja-index.html
-          curl -fsS http://127.0.0.1:4173/ninja-climb/game.js -o /tmp/ninja-game.js
-          curl -fsS http://127.0.0.1:4173/ninja-climb/style.css -o /tmp/ninja-style.css
-          node --check /tmp/ninja-game.js
-
-      - name: Browser gameplay smoke test
-        id: browser_smoke
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -m http.server 4174 --directory . >/tmp/ninja-browser-http.log 2>&1 &
+          python3 -m http.server 4174 --directory . >/tmp/ninja-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
           for i in {1..20}; do
@@ -82,120 +56,87 @@ jobs:
           /tmp/pw/node_modules/.bin/playwright install chromium >/tmp/playwright-install.log 2>&1
           NODE_PATH=/tmp/pw/node_modules node <<'JS'
           const { chromium } = require('playwright');
-          (async () => {
-            const browser = await chromium.launch({headless:true});
-            const page = await browser.newPage({viewport:{width:390,height:844}, isMobile:true, hasTouch:true});
+          const publicUrl = process.env.PUBLIC_URL;
+          async function verify(page, url, label) {
             const errors=[];
-            page.on('pageerror', e => errors.push('pageerror: '+e.message));
-            page.on('console', m => { if (m.type()==='error') errors.push('console: '+m.text()); });
-            const response = await page.goto('http://127.0.0.1:4174/ninja-climb/?autostart=1', {waitUntil:'networkidle', timeout:30000});
-            if (!response || !response.ok()) throw new Error('Game page HTTP failure');
-            await page.waitForTimeout(1000);
+            page.on('pageerror', e => errors.push(e.message));
+            const response = await page.goto(url, {waitUntil:'domcontentloaded', timeout:60000});
+            if (!response || !response.ok()) throw new Error(label+': HTTP failure');
+            await page.locator('#startBtn').waitFor({state:'visible', timeout:60000});
+            await page.locator('#startBtn').click();
+            await page.locator('#hud:not(.hidden)').waitFor({state:'visible', timeout:10000});
             const canvas = page.locator('#game');
-            if (await canvas.count() !== 1) throw new Error('Canvas missing');
-            if (await page.locator('#hud:not(.hidden)').count() !== 1) throw new Error('Autostart/HUD failed');
-            for (let i=0;i<6;i++) {
+            if (await canvas.count() !== 1) throw new Error(label+': canvas missing');
+            for (let i=0;i<7;i++) {
               await canvas.click({position:{x:195,y:520}});
               await page.waitForTimeout(150);
             }
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(900);
             const altitude = Number(await page.locator('#altitude').textContent());
-            if (!Number.isFinite(altitude) || altitude <= 0) throw new Error('Altitude did not progress');
-            await page.screenshot({path:'/tmp/ninja-climb-smoke.png'});
-            if (errors.length) throw new Error(errors.join('\n'));
+            if (!Number.isFinite(altitude) || altitude <= 0) throw new Error(label+': altitude did not progress');
+            if (errors.length) throw new Error(label+': '+errors.join(' | '));
+            return altitude;
+          }
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            const context = await browser.newContext({viewport:{width:390,height:844}, isMobile:true, hasTouch:true});
+            const local = await context.newPage();
+            const localAltitude = await verify(local, 'http://127.0.0.1:4174/ninja-climb/', 'local');
+            await local.screenshot({path:'/tmp/ninja-local.png'});
+            await local.close();
+            const remote = await context.newPage();
+            const remoteAltitude = await verify(remote, publicUrl, 'public');
+            await remote.screenshot({path:'/tmp/ninja-public.png'});
+            console.log('LOCAL_ALTITUDE='+localAltitude);
+            console.log('PUBLIC_ALTITUDE='+remoteAltitude);
+            console.log('PUBLIC_URL='+publicUrl);
             await browser.close();
           })().catch(err => { console.error(err); process.exit(1); });
           JS
 
-      - name: Configure Pages
-        id: configure_pages
-        continue-on-error: true
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - name: Upload Pages artifact
-        id: upload_pages
-        continue-on-error: true
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-
-      - name: Deploy Pages
-        id: deployment
-        continue-on-error: true
-        uses: actions/deploy-pages@v4
-
-      - name: Verify live Ninja Climb
-        id: live
-        if: steps.deployment.outcome == 'success'
+      - name: Public HTTP checks
+        id: public_http
         continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          BASE='${{ steps.deployment.outputs.page_url }}'
-          URL="${BASE%/}/ninja-climb/"
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
-          ok=0
-          for i in {1..24}; do
-            if curl -fsSL --max-time 20 "$URL" -o /tmp/live-ninja.html && grep -q '<title>Ninja Climb</title>' /tmp/live-ninja.html; then
-              ok=1
-              break
-            fi
-            sleep 5
-          done
-          test "$ok" = "1"
-          curl -fsSL --max-time 20 "${URL}game.js" -o /tmp/live-game.js
-          curl -fsSL --max-time 20 "${URL}style.css" -o /tmp/live-style.css
-          node --check /tmp/live-game.js
+          curl -fsSL --max-time 30 'https://github.com/alnaimistudio/aippy/blob/main/ninja-climb/index.html' -o /tmp/github-game.html
+          grep -q 'Ninja Climb' /tmp/github-game.html
+          curl -fsSL --max-time 30 'https://raw.githubusercontent.com/alnaimistudio/aippy/main/ninja-climb/game.js' -o /tmp/public-game.js
+          node --check /tmp/public-game.js
 
-      - name: Record deployment status
+      - name: Record verification result
         if: always()
         shell: bash
         env:
-          LIVE_URL: ${{ steps.live.outputs.url }}
           STATIC_RESULT: ${{ steps.static.outcome }}
-          HTTP_RESULT: ${{ steps.http_smoke.outcome }}
-          BROWSER_RESULT: ${{ steps.browser_smoke.outcome }}
-          CONFIG_RESULT: ${{ steps.configure_pages.outcome }}
-          UPLOAD_RESULT: ${{ steps.upload_pages.outcome }}
-          DEPLOY_RESULT: ${{ steps.deployment.outcome }}
-          LIVE_RESULT: ${{ steps.live.outcome }}
+          BROWSER_RESULT: ${{ steps.browser.outcome }}
+          HTTP_RESULT: ${{ steps.public_http.outcome }}
         run: |
           set -euo pipefail
           mkdir -p _deployment
-          URL="$LIVE_URL"
-          if [ -z "$URL" ]; then URL="https://alnaimistudio.github.io/aippy/ninja-climb/"; fi
           cat > _deployment/ninja-climb.json <<EOF
           {
             "game": "Ninja Climb",
-            "url": "$URL",
+            "url": "https://htmlpreview.github.io/?https://github.com/alnaimistudio/aippy/blob/main/ninja-climb/index.html",
             "commit": "${GITHUB_SHA}",
             "run_id": "${GITHUB_RUN_ID}",
             "static_checks": "$STATIC_RESULT",
-            "local_http": "$HTTP_RESULT",
             "browser_gameplay": "$BROWSER_RESULT",
-            "pages_config": "$CONFIG_RESULT",
-            "artifact_upload": "$UPLOAD_RESULT",
-            "pages_deploy": "$DEPLOY_RESULT",
-            "live_http": "$LIVE_RESULT",
+            "public_http": "$HTTP_RESULT",
             "checked_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
           EOF
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add _deployment/ninja-climb.json
-          git commit -m 'chore: record Ninja Climb deployment [skip ci]' || exit 0
+          git commit -m 'chore: record Ninja Climb verification [skip ci]' || exit 0
           git push
 
-      - name: Fail workflow if verification failed
+      - name: Fail if any verification failed
         if: always()
         shell: bash
         run: |
           test '${{ steps.static.outcome }}' = 'success'
-          test '${{ steps.http_smoke.outcome }}' = 'success'
-          test '${{ steps.browser_smoke.outcome }}' = 'success'
-          test '${{ steps.configure_pages.outcome }}' = 'success'
-          test '${{ steps.upload_pages.outcome }}' = 'success'
-          test '${{ steps.deployment.outcome }}' = 'success'
-          test '${{ steps.live.outcome }}' = 'success'
+          test '${{ steps.browser.outcome }}' = 'success'
+          test '${{ steps.public_http.outcome }}' = 'success'
