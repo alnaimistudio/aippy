@@ -58,8 +58,8 @@ const SNIPERS=[
 {id:4,name:'TITAN .50',price:5200,damage:100,fireDelay:.52,reload:1.65,sway:.66,scope:10,sprite:4,desc:'One-shot body potential'}
 ];
 
-const SPRITE_PARTS=8;
-const sniperSpritePromise=Promise.all(Array.from({length:SPRITE_PARTS},(_,i)=>fetch(`assets/snipers/safe-${i}.txt?v=56`,{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('sniper sprite '+i+' '+r.status);return r.text()}))).then(parts=>{document.documentElement.style.setProperty('--sniper-sprite',`url("data:image/webp;base64,${parts.join('')}")`);return true}).catch(e=>{console.warn('sniper shop images unavailable',e);return false});
+const SPRITE_FILES=['safe-0.txt','safe-1.txt','safe-2.txt','safe-3a.txt','safe-3b.txt','safe-4.txt','safe-5.txt','safe-6.txt','safe-7.txt'];
+const sniperSpritePromise=Promise.all(SPRITE_FILES.map(name=>fetch(`assets/snipers/${name}?v=56`,{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('sniper sprite '+name+' '+r.status);return r.text()}))).then(parts=>{document.documentElement.style.setProperty('--sniper-sprite',`url("data:image/webp;base64,${parts.join('')}")`);return true}).catch(e=>{console.warn('sniper shop images unavailable',e);return false});
 
 let save;try{save=JSON.parse(localStorage.getItem('forestStalkerV5'))||{}}catch{save={}}
 save={coins:Number(save.coins)||0,owned:Array.isArray(save.owned)?save.owned:[0],equipped:Number.isInteger(save.equipped)?save.equipped:0,kills:Number(save.kills)||0,bag:Math.min(5,Number(save.bag)||0)};
