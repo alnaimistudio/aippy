@@ -6,113 +6,31 @@
   <meta name="theme-color" content="#041522" />
   <title>Deep Catch — V3.2</title>
   <link rel="stylesheet" href="style.css?v=3.1" />
-  <!-- Deep Catch repaired fish artwork: 2026-08-18 -->
+  <!-- Deep Catch repaired fish artwork and complete rod pack: 2026-08-18 -->
 </head>
 <body>
 <div id="app">
   <canvas id="c" width="450" height="800"></canvas>
   <div id="gameRod" class="gameRod" aria-hidden="true"><img id="gameRodImg" alt="" /></div>
-
   <div id="hud">
-    <div class="topRow">
-      <div class="leftStats">
-        <div class="pill"><small>SCORE</small><b id="score">0</b></div>
-        <div class="pill mini"><small>STREAK</small><b id="combo">x0</b></div>
-      </div>
-      <div class="rightStats">
-        <button id="soundBtn" class="soundBtn" aria-label="Toggle sound">♪</button>
-        <div class="pill coins"><small>COINS</small><b id="coins">0</b></div>
-        <div class="pill mini"><small>BEST</small><b id="best">0</b></div>
-      </div>
-    </div>
-
-    <div class="rodBadge" id="rodBadge">
-      <img id="rodThumb" alt="Equipped rod" />
-      <div class="rodBadgeText">
-        <small id="rodTier">COMMON</small>
-        <b id="rodName">Driftwood Branch</b>
-        <span id="rodPassive">Starter Balance</span>
-      </div>
-    </div>
-
-    <div id="toast"><b id="toastTitle">FISH ON!</b><span id="toastSub">SNAPPER</span></div>
-    <div id="hint">DRAG TO GUIDE THE LURE</div>
-
-    <div id="fight">
-      <div class="fightHead"><small>LINE TENSION</small><b id="fishName">SNAPPER</b></div>
-      <div class="meter tensionMeter"><div class="safeMark" id="safeMark"><span class="safeLabel">SWEET SPOT</span></div><div class="needle" id="tensionNeedle"></div></div>
-      <div class="subLabels"><span>FISH ENERGY</span><span>LANDING</span></div>
-      <div class="staminaRow"><div class="stam"><i id="staminaFill"></i></div><div class="stam catchProg"><i id="catchFill"></i></div></div>
-    </div>
-
-    <button id="act">CAST</button>
-    <div id="depth">DEPTH<br><span id="depthM">0m</span></div>
-    <button id="shopQuick" class="shopQuick">RODS</button>
+    <div class="topRow"><div class="leftStats"><div class="pill"><small>SCORE</small><b id="score">0</b></div><div class="pill mini"><small>STREAK</small><b id="combo">x0</b></div></div><div class="rightStats"><button id="soundBtn" class="soundBtn" aria-label="Toggle sound">♪</button><div class="pill coins"><small>COINS</small><b id="coins">0</b></div><div class="pill mini"><small>BEST</small><b id="best">0</b></div></div></div>
+    <div class="rodBadge" id="rodBadge"><img id="rodThumb" alt="Equipped rod" /><div class="rodBadgeText"><small id="rodTier">COMMON</small><b id="rodName">Driftwood Branch</b><span id="rodPassive">Starter Balance</span></div></div>
+    <div id="toast"><b id="toastTitle">FISH ON!</b><span id="toastSub">SNAPPER</span></div><div id="hint">DRAG TO GUIDE THE LURE</div>
+    <div id="fight"><div class="fightHead"><small>LINE TENSION</small><b id="fishName">SNAPPER</b></div><div class="meter tensionMeter"><div class="safeMark" id="safeMark"><span class="safeLabel">SWEET SPOT</span></div><div class="needle" id="tensionNeedle"></div></div><div class="subLabels"><span>FISH ENERGY</span><span>LANDING</span></div><div class="staminaRow"><div class="stam"><i id="staminaFill"></i></div><div class="stam catchProg"><i id="catchFill"></i></div></div></div>
+    <button id="act">CAST</button><div id="depth">DEPTH<br><span id="depthM">0m</span></div><button id="shopQuick" class="shopQuick">RODS</button>
   </div>
-
-  <div id="intro" class="modalScreen visible">
-    <div class="panel introPanel">
-      <div class="logoMark">🎣</div>
-      <h1>DEEP<br>CATCH</h1>
-      <div class="tag">Catch fish, earn coins and build a rod collection that changes how every fight feels.</div>
-      <div class="tips">
-        <div class="tip"><strong>↔</strong>Drag the lure</div>
-        <div class="tip"><strong>●</strong>Hold & release</div>
-      </div>
-      <div class="currentRodCard" id="introRodCard">
-        <img id="introRod" alt="Current rod" />
-        <div>
-          <small id="introTier">COMMON ROD</small>
-          <b id="introRodName">Driftwood Branch</b>
-          <span id="introPassive">Starter Balance</span>
-        </div>
-      </div>
-      <button class="primary" id="play">START FISHING</button>
-      <button class="ghost" id="openShop">ROD SHOP</button>
-      <div class="subline">8 catches complete a trip · equipment, fish art and coins save automatically · V3.2</div>
-    </div>
-  </div>
-
-  <div id="shop" class="overlay">
-    <div class="sheet shopSheet">
-      <div class="sheetHead">
-        <div>
-          <small>EQUIPMENT</small>
-          <h2>Rod Shop</h2>
-          <p>Upgrade your style, not just your stats.</p>
-        </div>
-        <div class="headRight">
-          <div class="coinBubble">🪙 <span id="shopCoins">0</span></div>
-          <button class="iconBtn" id="closeShop" aria-label="Close shop">✕</button>
-        </div>
-      </div>
-      <div class="shopLegend"><span>POWER</span><span>CONTROL</span><span>LUCK</span><span>REWARD</span></div>
-      <div id="shopGrid" class="shopGrid"></div>
-    </div>
-  </div>
-
-  <div id="summary" class="overlay">
-    <div class="sheet summarySheet">
-      <div class="summaryTop">
-        <small>TRIP COMPLETE</small>
-        <h2 id="sumTitle">Great Session!</h2>
-        <p id="sumSub">You packed the cooler with fish.</p>
-      </div>
-      <div class="summaryRod"><img id="sumRodImg" alt="Equipped rod"><div><small>USED ROD</small><b id="sumRodName">Driftwood Branch</b></div></div>
-      <div class="summaryStats">
-        <div class="sumCard"><small>SCORE</small><b id="sumScore">0</b></div>
-        <div class="sumCard"><small>COINS WON</small><b id="sumCoins">0</b></div>
-        <div class="sumCard"><small>BEST STREAK</small><b id="sumStreak">0</b></div>
-        <div class="sumCard"><small>RARE FISH</small><b id="sumRare">0</b></div>
-      </div>
-      <div class="summaryActions">
-        <button class="primary" id="again">PLAY AGAIN</button>
-        <button class="ghost" id="summaryShop">UPGRADE ROD</button>
-      </div>
-    </div>
-  </div>
+  <div id="intro" class="modalScreen visible"><div class="panel introPanel"><div class="logoMark">🎣</div><h1>DEEP<br>CATCH</h1><div class="tag">Catch fish, earn coins and build a rod collection that changes how every fight feels.</div><div class="tips"><div class="tip"><strong>↔</strong>Drag the lure</div><div class="tip"><strong>●</strong>Hold & release</div></div><div class="currentRodCard" id="introRodCard"><img id="introRod" alt="Current rod" /><div><small id="introTier">COMMON ROD</small><b id="introRodName">Driftwood Branch</b><span id="introPassive">Starter Balance</span></div></div><button class="primary" id="play">START FISHING</button><button class="ghost" id="openShop">ROD SHOP</button><div class="subline">8 catches complete a trip · equipment, fish art and coins save automatically · V3.2</div></div></div>
+  <div id="shop" class="overlay"><div class="sheet shopSheet"><div class="sheetHead"><div><small>EQUIPMENT</small><h2>Rod Shop</h2><p>Upgrade your style, not just your stats.</p></div><div class="headRight"><div class="coinBubble">🪙 <span id="shopCoins">0</span></div><button class="iconBtn" id="closeShop" aria-label="Close shop">✕</button></div></div><div class="shopLegend"><span>POWER</span><span>CONTROL</span><span>LUCK</span><span>REWARD</span></div><div id="shopGrid" class="shopGrid"></div></div></div>
+  <div id="summary" class="overlay"><div class="sheet summarySheet"><div class="summaryTop"><small>TRIP COMPLETE</small><h2 id="sumTitle">Great Session!</h2><p id="sumSub">You packed the cooler with fish.</p></div><div class="summaryRod"><img id="sumRodImg" alt="Equipped rod"><div><small>USED ROD</small><b id="sumRodName">Driftwood Branch</b></div></div><div class="summaryStats"><div class="sumCard"><small>SCORE</small><b id="sumScore">0</b></div><div class="sumCard"><small>COINS WON</small><b id="sumCoins">0</b></div><div class="sumCard"><small>BEST STREAK</small><b id="sumStreak">0</b></div><div class="sumCard"><small>RARE FISH</small><b id="sumRare">0</b></div></div><div class="summaryActions"><button class="primary" id="again">PLAY AGAIN</button><button class="ghost" id="summaryShop">UPGRADE ROD</button></div></div></div>
 </div>
 <script src="rod-assets.js?v=3.1"></script>
+<script src="assets/rods/angler.js?v=3.2"></script>
+<script src="assets/rods/voyager.js?v=3.2"></script>
+<script src="assets/rods/storm.js?v=3.2"></script>
+<script src="assets/rods/inferno.js?v=3.2"></script>
+<script src="assets/rods/void.js?v=3.2"></script>
+<script src="assets/rods/solar.js?v=3.2"></script>
+<script src="assets/rods/shadow.js?v=3.2"></script>
 <script src="fish-assets.js?v=3.1"></script>
 <script src="fish-url-fixes.js?v=3.2"></script>
 <script src="game-render.js?v=3.1"></script>
