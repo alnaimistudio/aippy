@@ -1,0 +1,230 @@
+name: Verify Deep Catch Public Preview
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'games/deep-catch/index.html'
+      - 'games/deep-catch/style.css'
+      - 'games/deep-catch/game-render.js'
+      - 'games/deep-catch/rod-assets.js'
+      - 'games/deep-catch/fish-assets.js'
+      - 'games/deep-catch/assets/fish/**'
+      - '.github/workflows/deep-catch-verify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deep-catch-preview
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Static game checks and standalone build
+        id: build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT='games/deep-catch'
+          test -s "$ROOT/index.html"
+          test -s "$ROOT/style.css"
+          test -s "$ROOT/game-render.js"
+          test -s "$ROOT/rod-assets.js"
+          test -s "$ROOT/fish-assets.js"
+          node --check "$ROOT/game-render.js"
+          node --check "$ROOT/rod-assets.js"
+          node --check "$ROOT/fish-assets.js"
+          for f in "$ROOT"/assets/fish/*.js; do node --check "$f"; done
+          python3 <<'PY'
+          from pathlib import Path
+          root = Path('games/deep-catch')
+          html = (root/'index.html').read_text(encoding='utf-8')
+          css = (root/'style.css').read_text(encoding='utf-8')
+          rod = (root/'rod-assets.js').read_text(encoding='utf-8')
+          game = (root/'game-render.js').read_text(encoding='utf-8')
+          fish_parts = []
+          for p in sorted((root/'assets/fish').glob('*.js')):
+              fish_parts.append(p.read_text(encoding='utf-8'))
+          fish = '\n'.join(fish_parts)
+          css_ref = '<link rel="stylesheet" href="style.css?v=3.1" />'
+          rod_ref = '<script src="rod-assets.js?v=3.1"></script>'
+          fish_ref = '<script src="fish-assets.js?v=3.1"></script>'
+          game_ref = '<script src="game-render.js?v=3.1"></script>'
+          for ref in (css_ref, rod_ref, fish_ref, game_ref):
+              if ref not in html:
+                  raise SystemExit(f'Missing expected asset reference: {ref}')
+          html = html.replace(css_ref, '<style>\n'+css+'\n</style>')
+          html = html.replace(rod_ref, '<script>\n'+rod+'\n</script>')
+          html = html.replace(fish_ref, '<script>\n'+fish+'\n</script>')
+          html = html.replace(game_ref, '<script>\n'+game+'\n</script>')
+          (root/'play.html').write_text(html, encoding='utf-8')
+          PY
+          test -s "$ROOT/play.html"
+          grep -q 'Deep Catch' "$ROOT/play.html"
+          grep -q 'id="play"' "$ROOT/play.html"
+          grep -q 'id="shopGrid"' "$ROOT/play.html"
+          grep -q 'YELLOWFIN JACK' "$ROOT/play.html"
+          grep -q 'LEVIATHAN WHALE' "$ROOT/play.html"
+          grep -q 'INFERNO FANGFISH' "$ROOT/play.html"
+
+      - name: Publish standalone preview file
+        id: publish
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add games/deep-catch/play.html
+          if git diff --cached --quiet; then
+            echo 'Deep Catch standalone preview already current.'
+          else
+            git commit -m 'build: refresh Deep Catch standalone preview [skip ci]'
+            git push
+          fi
+          sleep 5
+
+      - name: Local and public mobile gameplay smoke test
+        id: browser
+        continue-on-error: true
+        shell: bash
+        env:
+          PUBLIC_URL: https://htmlpreview.github.io/?https://github.com/alnaimistudio/aippy/blob/main/games/deep-catch/play.html
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4175 --directory . >/tmp/deep-catch-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for i in {1..20}; do
+            curl -fsS http://127.0.0.1:4175/games/deep-catch/play.html >/dev/null && break
+            sleep 1
+          done
+          mkdir -p /tmp/pw-deep
+          npm install --prefix /tmp/pw-deep --no-save playwright@1.55.0 >/tmp/deep-playwright-npm.log 2>&1
+          /tmp/pw-deep/node_modules/.bin/playwright install chromium >/tmp/deep-playwright-install.log 2>&1
+          NODE_PATH=/tmp/pw-deep/node_modules node <<'JS'
+          const { chromium } = require('playwright');
+          const publicUrl = process.env.PUBLIC_URL;
+          async function verify(page, url, label) {
+            const errors=[];
+            const failed=[];
+            page.on('pageerror', e => errors.push('pageerror: '+e.message));
+            page.on('console', m => { if (m.type()==='error') errors.push('console: '+m.text()); });
+            page.on('requestfailed', r => failed.push(r.url()+' :: '+(r.failure()?.errorText||'failed')));
+            console.log('VERIFY_START='+label+' '+url);
+            const response = await page.goto(url, {waitUntil:'domcontentloaded', timeout:90000});
+            if (!response || !response.ok()) throw new Error(label+': HTTP failure');
+            await page.locator('#play').waitFor({state:'visible', timeout:90000});
+            await page.locator('#play').click();
+            await page.locator('#c').waitFor({state:'visible', timeout:15000});
+            await page.locator('#act').waitFor({state:'visible', timeout:15000});
+            const initialAction=(await page.locator('#act').textContent()||'').trim();
+            if (initialAction!=='CAST') throw new Error(label+': expected CAST, got '+initialAction);
+
+            await page.locator('#shopQuick').click();
+            await page.locator('#shop.open').waitFor({state:'visible', timeout:10000});
+            const cards=await page.locator('#shopGrid .shopCard').count();
+            if (cards < 8) throw new Error(label+': rod shop incomplete, cards='+cards);
+            await page.locator('#closeShop').click();
+            await page.locator('#shop:not(.open)').waitFor({state:'attached', timeout:10000});
+
+            await page.locator('#act').click();
+            await page.waitForTimeout(1400);
+            const actionAfterCast=(await page.locator('#act').textContent()||'').trim();
+            const depth=(await page.locator('#depthM').textContent()||'').trim();
+            if (!['GUIDE','REEL'].includes(actionAfterCast)) throw new Error(label+': cast did not enter gameplay, action='+actionAfterCast);
+            const canvas=page.locator('#c');
+            for (const pos of [{x:90,y:430},{x:300,y:500},{x:210,y:610},{x:120,y:540}]) {
+              await canvas.click({position:pos});
+              await page.waitForTimeout(220);
+            }
+            await page.waitForTimeout(1200);
+            const score=Number((await page.locator('#score').textContent()||'0').trim());
+            const coins=Number((await page.locator('#coins').textContent()||'0').trim());
+            if (!Number.isFinite(score) || !Number.isFinite(coins)) throw new Error(label+': HUD values invalid');
+            if (errors.length) throw new Error(label+': '+errors.join(' | '));
+            const criticalFailures=failed.filter(x=>!x.includes('favicon'));
+            if (criticalFailures.length) throw new Error(label+': request failures: '+criticalFailures.join(' | '));
+            console.log('VERIFY_OK='+label+' CARDS='+cards+' ACTION='+actionAfterCast+' DEPTH='+depth+' SCORE='+score+' COINS='+coins);
+          }
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+            const local=await context.newPage();
+            await verify(local,'http://127.0.0.1:4175/games/deep-catch/play.html','local');
+            await local.screenshot({path:'/tmp/deep-catch-local.png',fullPage:true});
+            await local.close();
+            const remote=await context.newPage();
+            await verify(remote,publicUrl,'public');
+            await remote.screenshot({path:'/tmp/deep-catch-public.png',fullPage:true});
+            console.log('PUBLIC_URL='+publicUrl);
+            await browser.close();
+          })().catch(err=>{console.error(err);process.exit(1)});
+          JS
+
+      - name: Public source HTTP checks
+        id: public_http
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in {1..15}; do
+            if curl -fsSL --max-time 30 'https://raw.githubusercontent.com/alnaimistudio/aippy/main/games/deep-catch/play.html' -o /tmp/deep-public-play.html && grep -q 'Deep Catch' /tmp/deep-public-play.html; then
+              ok=1
+              break
+            fi
+            sleep 3
+          done
+          test "$ok" = "1"
+          grep -q 'id="shopGrid"' /tmp/deep-public-play.html
+          grep -q 'LEVIATHAN WHALE' /tmp/deep-public-play.html
+          grep -q 'Shadow Reaper' /tmp/deep-public-play.html
+
+      - name: Record verification result
+        if: always()
+        shell: bash
+        env:
+          BUILD_RESULT: ${{ steps.build.outcome }}
+          PUBLISH_RESULT: ${{ steps.publish.outcome }}
+          BROWSER_RESULT: ${{ steps.browser.outcome }}
+          HTTP_RESULT: ${{ steps.public_http.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p _deployment
+          cat > _deployment/deep-catch.json <<EOF
+          {
+            "game": "Deep Catch",
+            "url": "https://htmlpreview.github.io/?https://github.com/alnaimistudio/aippy/blob/main/games/deep-catch/play.html",
+            "commit": "${GITHUB_SHA}",
+            "run_id": "${GITHUB_RUN_ID}",
+            "standalone_build": "$BUILD_RESULT",
+            "standalone_publish": "$PUBLISH_RESULT",
+            "browser_gameplay": "$BROWSER_RESULT",
+            "public_http": "$HTTP_RESULT",
+            "checked_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          git pull --rebase
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add _deployment/deep-catch.json
+          git commit -m 'chore: record Deep Catch verification [skip ci]' || exit 0
+          git push
+
+      - name: Fail if any verification failed
+        if: always()
+        shell: bash
+        run: |
+          test '${{ steps.build.outcome }}' = 'success'
+          test '${{ steps.publish.outcome }}' = 'success'
+          test '${{ steps.browser.outcome }}' = 'success'
+          test '${{ steps.public_http.outcome }}' = 'success'
