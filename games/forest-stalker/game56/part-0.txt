@@ -1,0 +1,75 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+
+const $ = s => document.querySelector(s);
+const canvas = $('#g');
+const MOBILE = matchMedia('(pointer: coarse)').matches || innerWidth < 700;
+const BASE_DPR = MOBILE ? 1.38 : 1.55;
+const R = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
+R.setPixelRatio(Math.min(devicePixelRatio || 1, BASE_DPR));
+R.setSize(innerWidth, innerHeight, false);
+R.shadowMap.enabled = true;
+R.shadowMap.type = THREE.PCFSoftShadowMap;
+R.toneMapping = THREE.ACESFilmicToneMapping;
+R.toneMappingExposure = 1.04;
+R.outputColorSpace = THREE.SRGBColorSpace;
+
+const S = new THREE.Scene();
+S.background = new THREE.Color(0x8c9e8c);
+S.fog = new THREE.FogExp2(0x718071, .0148);
+const C = new THREE.PerspectiveCamera(17.5, innerWidth/innerHeight, .08, 240);
+C.position.set(0,1.72,0); C.rotation.order='YXZ'; S.add(C);
+S.add(new THREE.HemisphereLight(0xdce7d9,0x253024,1.36));
+const sun = new THREE.DirectionalLight(0xffe7bd,2.15);
+sun.position.set(-30,45,18); sun.castShadow=true;
+const shadowSize = MOBILE ? 768 : 1024;
+sun.shadow.mapSize.set(shadowSize,shadowSize); S.add(sun);
+
+const ty=(x,z)=>Math.sin(x*.09)*.24+Math.cos(z*.075)*.22+Math.sin((x+z)*.035)*.18;
+const gg=new THREE.PlaneGeometry(180,180,64,64);gg.rotateX(-Math.PI/2);
+for(let i=0;i<gg.attributes.position.count;i++){const x=gg.attributes.position.getX(i),z=gg.attributes.position.getZ(i);gg.attributes.position.setY(i,ty(x,z))}
+gg.computeVertexNormals();
+const ground=new THREE.Mesh(gg,new THREE.MeshStandardMaterial({color:0x354a30,roughness:1}));ground.receiveShadow=true;S.add(ground);
+
+let seed=98731;
+const rnd=()=>((seed=Math.imul(seed,1664525)+1013904223>>>0)/4294967296),dum=new THREE.Object3D();
+const trunkG=new THREE.CylinderGeometry(.14,.28,3.8,7),trunkM=new THREE.MeshStandardMaterial({color:0x4b3927});
+const crownG=new THREE.ConeGeometry(1.25,4.3,8),crownM=new THREE.MeshStandardMaterial({color:0x29452d});
+const trees=new THREE.InstancedMesh(trunkG,trunkM,210),crowns=new THREE.InstancedMesh(crownG,crownM,210);
+trees.name='TREE_TRUNKS'; crowns.name='TREE_CROWNS'; trees.castShadow=crowns.castShadow=true;
+for(let i=0;i<210;i++){
+  const a=rnd()*Math.PI*2,r=11+rnd()*72,x=Math.cos(a)*r,z=Math.sin(a)*r,s=.62+rnd()*1.22,y=ty(x,z);
+  dum.position.set(x,y+1.9*s,z);dum.scale.setScalar(s);dum.rotation.y=rnd()*6.28;dum.updateMatrix();trees.setMatrixAt(i,dum.matrix);
+  dum.position.set(x,y+4.05*s,z);dum.scale.setScalar(s*(.88+rnd()*.22));dum.updateMatrix();crowns.setMatrixAt(i,dum.matrix);
+}
+S.add(trees,crowns);
+const shrubG=new THREE.IcosahedronGeometry(.45,1),shrubM=new THREE.MeshStandardMaterial({color:0x45613c}),shrubs=new THREE.InstancedMesh(shrubG,shrubM,120);
+shrubs.name='SHRUBS';
+for(let i=0;i<120;i++){const a=rnd()*Math.PI*2,r=9+rnd()*70,x=Math.cos(a)*r,z=Math.sin(a)*r,s=.4+rnd()*.9;dum.position.set(x,ty(x,z)+.18,z);dum.scale.set(s*1.4,s*.65,s);dum.rotation.y=rnd()*6.28;dum.updateMatrix();shrubs.setMatrixAt(i,dum.matrix)}
+S.add(shrubs);
+const SHOT_BLOCKERS=[trees,crowns];
+
+const SNIPERS=[
+{id:0,name:'RANGER .308',price:0,damage:42,fireDelay:.34,reload:1.45,sway:1,scope:6,sprite:0,desc:'Balanced starter rifle'},
+{id:1,name:'HUNTER X',price:600,damage:55,fireDelay:.30,reload:1.35,sway:.86,scope:6,sprite:1,desc:'Higher stopping power'},
+{id:2,name:'VANGUARD',price:1400,damage:50,fireDelay:.23,reload:1.15,sway:.78,scope:7,sprite:2,desc:'Fast follow-up shots'},
+{id:3,name:'SILVER FOX',price:2600,damage:70,fireDelay:.38,reload:1.30,sway:.52,scope:8,sprite:3,desc:'Very stable and powerful'},
+{id:4,name:'TITAN .50',price:5200,damage:100,fireDelay:.52,reload:1.65,sway:.66,scope:10,sprite:4,desc:'One-shot body potential'}
+];
+
+
+const SPRITE_PARTS=13;
+const sniperSpritePromise=Promise.all(Array.from({length:SPRITE_PARTS},(_,i)=>fetch(`assets/snipers/sprite-${i}.txt?v=56`,{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('sniper sprite '+i+' '+r.status);return r.text()}))).then(parts=>{document.documentElement.style.setProperty('--sniper-sprite',`url("data:image/webp;base64,${parts.join('')}")`);return true}).catch(e=>{console.warn('sniper shop images unavailable',e);return false});
+
+let save;try{save=JSON.parse(localStorage.getItem('forestStalkerV5'))||{}}catch{save={}}
+save={coins:Number(save.coins)||0,owned:Array.isArray(save.owned)?save.owned:[0],equipped:Number.isInteger(save.equipped)?save.equipped:0,kills:Number(save.kills)||0,bag:Math.min(5,Number(save.bag)||0)};
+if(!save.owned.includes(0))save.owned.unshift(0);if(!SNIPERS[save.equipped]||!save.owned.includes(save.equipped))save.equipped=0;
+const persist=()=>{try{localStorage.setItem('forestStalkerV5',JSON.stringify(save))}catch{}};
+
+const AUDIO_URL='audio/sfx-sprite.mp3?v=56';
+const CUES={reload:{start:0,dur:1.50,gain:.83},shot:{start:1.662,dur:1.55,gain:.96},impact:{start:3.379,dur:1.04,gain:.78},snort:{start:4.585,dur:2.0,gain:.43},grunt:{start:6.775,dur:2.0,gain:.50}};
+let audioBytes=null,AC=null,audioBuffer=null,master=null,natureStarted=false,nextDeerCall=performance.now()+5000;
+const audioPreload=fetch(AUDIO_URL,{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('audio '+r.status);return r.arrayBuffer()}).then(b=>audioBytes=b);
+async function initAudio(){if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createDynamicsCompressor();master.threshold.value=-14;master.knee.value=12;master.ratio.value=5;master.attack.value=.003;master.release.value=.20;master.connect(AC.destination)}await AC.resume();if(!audioBytes)await audioPreload;if(!audioBuffer)audioBuffer=await AC.decodeAudioData(audioBytes.slice(0));if(!natureStarted)startNature()}
+function playCue(name,{volume=1,rate=1,pan=0,delay=0}={}){if(!AC||!audioBuffer||!master)return;const c=CUES[name];if(!c)return;const src=AC.createBufferSource(),g=AC.createGain();src.buffer=audioBuffer;src.playbackRate.value=rate;g.gain.valu
