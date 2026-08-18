@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify public playable URL in mobile Chromium
+      - name: Verify public playable URL and approved HD artwork in mobile Chromium
         id: test
         continue-on-error: true
         env:
@@ -24,6 +24,7 @@ jobs:
           set -euo pipefail
           node --check ninja-climb/game.js
           grep -q '<title>Ninja Climb</title>' ninja-climb/play.html
+          for f in ninja-climb/assets/atlas-00.txt ninja-climb/assets/atlas-01.txt ninja-climb/assets/atlas-02.txt ninja-climb/assets/atlas-03.txt; do test -s "$f"; done
           mkdir -p /tmp/pw
           npm install --prefix /tmp/pw --no-save playwright@1.55.0 >/dev/null 2>&1
           /tmp/pw/node_modules/.bin/playwright install chromium >/dev/null 2>&1
@@ -38,6 +39,10 @@ jobs:
             const r=await page.goto(u,{waitUntil:'domcontentloaded',timeout:60000});
             if(!r||!r.ok()) throw new Error('public HTTP failed');
             await page.locator('#startBtn').waitFor({state:'visible',timeout:60000});
+            await page.waitForFunction(()=>window.__NINJA_ART_READY__===true,{timeout:60000});
+            const source=await page.evaluate(()=>window.__NINJA_ART_SOURCE__);
+            if(source!=='approved-uploaded-assets') throw new Error('approved artwork source not active');
+            console.log('HD_ART_OK');
             await page.locator('#startBtn').click();
             await page.locator('#hud:not(.hidden)').waitFor({state:'visible',timeout:15000});
             const canvas=page.locator('#game');
@@ -49,7 +54,7 @@ jobs:
             console.log('PUBLIC_GAME_OK');
             console.log('ALTITUDE='+altitude);
             console.log('PLAY_URL='+u);
-            await page.screenshot({path:'/tmp/ninja-final.png'});
+            await page.screenshot({path:'/tmp/ninja-final-hd.png'});
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
@@ -60,12 +65,12 @@ jobs:
         run: |
           mkdir -p _deployment
           cat > _deployment/ninja-climb-final.json <<EOF
-          {"url":"https://html-preview.github.io/?url=https://github.com/alnaimistudio/aippy/blob/main/ninja-climb/play.html","browser_gameplay":"$RESULT","run_id":"$GITHUB_RUN_ID","commit":"$GITHUB_SHA"}
+          {"url":"https://html-preview.github.io/?url=https://github.com/alnaimistudio/aippy/blob/main/ninja-climb/play.html","browser_gameplay":"$RESULT","approved_hd_artwork":"$RESULT","run_id":"$GITHUB_RUN_ID","commit":"$GITHUB_SHA"}
           EOF
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add _deployment/ninja-climb-final.json
-          git commit -m 'chore: record final Ninja Climb public check [skip ci]' || exit 0
+          git commit -m 'chore: record final Ninja Climb HD check [skip ci]' || exit 0
           git push
       - name: Require success
         if: always()
