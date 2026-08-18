@@ -1,0 +1,7 @@
+Forest Stalker V5.4
+- Restored professional deer model
+- Fixed reticle hit detection
+- 5-round magazine
+- Minimum deer distance
+- Bag capacity 5/5
+- Audio preloaded before hunt
