@@ -1,0 +1,72 @@
+name: Deep Catch Link Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deep-catch-link-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify final game link
+        id: browser
+        continue-on-error: true
+        env:
+          URL: https://alnaimistudio.github.io/aippy/games/deep-catch/
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pw
+          npm install --prefix /tmp/pw --no-save playwright@1.55.0 >/dev/null 2>&1
+          /tmp/pw/node_modules/.bin/playwright install chromium >/dev/null 2>&1
+          NODE_PATH=/tmp/pw/node_modules node <<'JS'
+          const { chromium } = require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+            const page=await context.newPage();
+            const pageErrors=[];
+            page.on('pageerror',e=>pageErrors.push(e.message));
+            const response=await page.goto(process.env.URL,{waitUntil:'domcontentloaded',timeout:60000});
+            if(!response||!response.ok()) throw new Error('HTTP '+(response&&response.status()));
+            await page.locator('#play').waitFor({state:'visible',timeout:30000});
+            await page.locator('#play').click();
+            await page.locator('#act').waitFor({state:'visible',timeout:10000});
+            if((await page.locator('#act').textContent()).trim()!=='CAST') throw new Error('CAST not ready');
+            await page.locator('#shopQuick').click();
+            await page.locator('#shop.open').waitFor({state:'visible',timeout:10000});
+            const cards=await page.locator('#shopGrid .shopCard').count();
+            if(cards<8) throw new Error('rod cards='+cards);
+            await page.locator('#closeShop').click();
+            await page.locator('#act').click();
+            await page.waitForTimeout(1500);
+            const action=(await page.locator('#act').textContent()).trim();
+            if(!['GUIDE','REEL'].includes(action)) throw new Error('cast state='+action);
+            if(pageErrors.length) throw new Error('pageerror: '+pageErrors.join(' | '));
+            console.log('LINK_OK=1 CARDS='+cards+' ACTION='+action+' URL='+process.env.URL);
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - name: Record result
+        if: always()
+        env:
+          RESULT: ${{ steps.browser.outcome }}
+          URL: https://alnaimistudio.github.io/aippy/games/deep-catch/
+        run: |
+          mkdir -p _deployment
+          printf '{"url":"%s","browser_gameplay":"%s","run_id":"%s"}\n' "$URL" "$RESULT" "$GITHUB_RUN_ID" > _deployment/deep-catch-link.json
+          git pull --rebase
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add _deployment/deep-catch-link.json
+          git commit -m 'chore: record Deep Catch link smoke [skip ci]' || exit 0
+          git push
+      - name: Gate
+        if: always()
+        run: test '${{ steps.browser.outcome }}' = 'success'
