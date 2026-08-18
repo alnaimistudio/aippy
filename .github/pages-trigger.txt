@@ -1,0 +1,2 @@
+Trigger GitHub Pages deployment for Aippy games.
+2026-08-18
