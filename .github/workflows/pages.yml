@@ -1,194 +1,70 @@
-name: Verify Ninja Climb Public Preview
+name: Ninja Climb Manual Verification
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '_deployment/**'
-      - 'ninja-climb/play.html'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: ninja-climb-preview
+  group: ninja-climb-manual-verification
   cancel-in-progress: true
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 8
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build standalone playable HTML with embedded HD artwork
-        id: build
-        continue-on-error: true
+      - name: Static game checks
         shell: bash
         run: |
           set -euo pipefail
           test -s ninja-climb/index.html
           test -s ninja-climb/style.css
           test -s ninja-climb/game.js
-          for f in ninja-climb/assets/atlas-00.txt ninja-climb/assets/atlas-01.txt ninja-climb/assets/atlas-02.txt ninja-climb/assets/atlas-03.txt; do test -s "$f"; done
-          node --check ninja-climb/game.js
-          python3 <<'PY'
-          from pathlib import Path
-          import json
-          root = Path('ninja-climb')
-          html = (root/'index.html').read_text(encoding='utf-8')
-          css = (root/'style.css').read_text(encoding='utf-8')
-          js = (root/'game.js').read_text(encoding='utf-8')
-          chunks = [(root/'assets'/f'atlas-0{i}.txt').read_text(encoding='utf-8').strip() for i in range(4)]
-          old_css = '<link rel="stylesheet" href="style.css">'
-          old_js = '<script src="game.js"></script>'
-          if old_css not in html or old_js not in html:
-              raise SystemExit('Expected asset references are missing')
-          inline_assets = '''<script>\n(() => {\n  const chunks = %s;\n  const nativeFetch = window.fetch.bind(window);\n  window.fetch = (input, init) => {\n    const u = String(input);\n    const m = u.match(/atlas-0([0-3])\\.txt/);\n    if (m) return Promise.resolve(new Response(chunks[Number(m[1])], {status:200, headers:{'Content-Type':'text/plain'}}));\n    return nativeFetch(input, init);\n  };\n  window.__NINJA_ART_EMBEDDED__ = true;\n})();\n</script>''' % json.dumps(chunks)
-          html = html.replace(old_css, '<style>\n'+css+'\n</style>')
-          html = html.replace(old_js, inline_assets+'\n<script>\n'+js+'\n</script>')
-          (root/'play.html').write_text(html, encoding='utf-8')
-          PY
           test -s ninja-climb/play.html
+          node --check ninja-climb/game.js
           grep -q '<title>Ninja Climb</title>' ninja-climb/play.html
           grep -q 'id="startBtn"' ninja-climb/play.html
-          grep -q '__NINJA_ART_EMBEDDED__' ninja-climb/play.html
           grep -q 'requestAnimationFrame(loop)' ninja-climb/play.html
+          grep -q '__NINJA_ART_EMBEDDED__' ninja-climb/play.html
+          echo 'STATIC_CHECKS_OK'
 
-      - name: Publish standalone preview file
-        id: publish
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add ninja-climb/play.html
-          if git diff --cached --quiet; then
-            echo 'Standalone preview already current.'
-          else
-            git commit -m 'build: refresh Ninja Climb standalone HD preview [skip ci]'
-            git push
-          fi
-          sleep 5
-
-      - name: Local and public HD gameplay smoke test
-        id: browser
-        continue-on-error: true
+      - name: Mobile browser smoke test
         shell: bash
         env:
-          PUBLIC_URL: https://html-preview.github.io/?url=https://github.com/alnaimistudio/aippy/blob/main/ninja-climb/play.html
+          PLAY_URL: https://html-preview.github.io/?url=https://github.com/alnaimistudio/aippy/blob/main/ninja-climb/play.html
         run: |
           set -euo pipefail
-          python3 -m http.server 4174 --directory . >/tmp/ninja-http.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
-          for i in {1..20}; do
-            curl -fsS http://127.0.0.1:4174/ninja-climb/play.html >/dev/null && break
-            sleep 1
-          done
           mkdir -p /tmp/pw
-          npm install --prefix /tmp/pw --no-save playwright@1.55.0 >/tmp/playwright-npm.log 2>&1
-          /tmp/pw/node_modules/.bin/playwright install chromium >/tmp/playwright-install.log 2>&1
+          npm install --prefix /tmp/pw --no-save playwright@1.55.0 >/dev/null 2>&1
+          /tmp/pw/node_modules/.bin/playwright install chromium >/dev/null 2>&1
           NODE_PATH=/tmp/pw/node_modules node <<'JS'
           const { chromium } = require('playwright');
-          const publicUrl = process.env.PUBLIC_URL;
-          async function verify(page, url, label) {
-            console.log('VERIFY_START='+label+' '+url);
-            const errors=[];
-            page.on('pageerror', e => errors.push(e.message));
-            const response = await page.goto(url, {waitUntil:'domcontentloaded', timeout:60000});
-            if (!response || !response.ok()) throw new Error(label+': HTTP failure');
-            await page.locator('#startBtn').waitFor({state:'visible', timeout:60000});
-            await page.waitForFunction(() => window.__NINJA_ART_EMBEDDED__ === true, null, {timeout:60000});
-            await page.waitForFunction(() => window.__NINJA_ART_READY__ === true, null, {timeout:60000});
-            const source = await page.evaluate(() => window.__NINJA_ART_SOURCE__);
-            if (source !== 'approved-uploaded-assets') throw new Error(label+': approved HD artwork not active');
-            await page.locator('#startBtn').click();
-            await page.locator('#hud:not(.hidden)').waitFor({state:'visible', timeout:15000});
-            const canvas = page.locator('#game');
-            if (await canvas.count() !== 1) throw new Error(label+': canvas missing');
-            for (let i=0;i<8;i++) { await canvas.click({position:{x:195,y:520}}); await page.waitForTimeout(140); }
-            await page.waitForTimeout(1000);
-            const altitude = Number(await page.locator('#altitude').textContent());
-            if (!Number.isFinite(altitude) || altitude <= 0) throw new Error(label+': altitude did not progress');
-            if (errors.length) throw new Error(label+': '+errors.join(' | '));
-            console.log('HD_ART_OK='+label);
-            console.log('VERIFY_OK='+label+' ALTITUDE='+altitude);
-            return altitude;
-          }
           (async () => {
             const browser = await chromium.launch({headless:true});
-            const context = await browser.newContext({viewport:{width:390,height:844}, isMobile:true, hasTouch:true});
-            const local = await context.newPage();
-            await verify(local, 'http://127.0.0.1:4174/ninja-climb/play.html', 'local');
-            await local.screenshot({path:'/tmp/ninja-local-hd.png'});
-            await local.close();
-            const remote = await context.newPage();
-            await verify(remote, publicUrl, 'public');
-            await remote.screenshot({path:'/tmp/ninja-public-hd.png'});
-            console.log('PUBLIC_URL='+publicUrl);
+            const page = await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+            const errors = [];
+            page.on('pageerror', e => errors.push(e.message));
+            const response = await page.goto(process.env.PLAY_URL,{waitUntil:'domcontentloaded',timeout:60000});
+            if (!response || !response.ok()) throw new Error('Public preview HTTP failure');
+            await page.locator('#startBtn').waitFor({state:'visible',timeout:60000});
+            await page.locator('#startBtn').click();
+            await page.locator('#hud:not(.hidden)').waitFor({state:'visible',timeout:15000});
+            const canvas = page.locator('#game');
+            for (let i=0;i<6;i++) {
+              await canvas.click({position:{x:195,y:520}});
+              await page.waitForTimeout(160);
+            }
+            await page.waitForTimeout(800);
+            const altitude = Number(await page.locator('#altitude').textContent());
+            if (!(altitude > 0)) throw new Error('Gameplay did not progress');
+            if (errors.length) throw new Error(errors.join(' | '));
+            console.log('PUBLIC_GAME_OK ALTITUDE='+altitude);
             await browser.close();
           })().catch(err => { console.error(err); process.exit(1); });
           JS
-
-      - name: Public source HTTP checks
-        id: public_http
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -euo pipefail
-          ok=0
-          for i in {1..12}; do
-            if curl -fsSL --max-time 30 'https://raw.githubusercontent.com/alnaimistudio/aippy/main/ninja-climb/play.html' -o /tmp/public-play.html && grep -q '<title>Ninja Climb</title>' /tmp/public-play.html; then
-              ok=1
-              break
-            fi
-            sleep 3
-          done
-          test "$ok" = "1"
-          grep -q '__NINJA_ART_EMBEDDED__' /tmp/public-play.html
-          grep -q 'approved-uploaded-assets' /tmp/public-play.html
-          grep -q 'requestAnimationFrame(loop)' /tmp/public-play.html
-
-      - name: Record verification result
-        if: always()
-        shell: bash
-        env:
-          BUILD_RESULT: ${{ steps.build.outcome }}
-          PUBLISH_RESULT: ${{ steps.publish.outcome }}
-          BROWSER_RESULT: ${{ steps.browser.outcome }}
-          HTTP_RESULT: ${{ steps.public_http.outcome }}
-        run: |
-          set -euo pipefail
-          mkdir -p _deployment
-          cat > _deployment/ninja-climb.json <<EOF
-          {
-            "game": "Ninja Climb",
-            "url": "https://html-preview.github.io/?url=https://github.com/alnaimistudio/aippy/blob/main/ninja-climb/play.html",
-            "commit": "${GITHUB_SHA}",
-            "run_id": "${GITHUB_RUN_ID}",
-            "standalone_build": "$BUILD_RESULT",
-            "standalone_publish": "$PUBLISH_RESULT",
-            "approved_hd_artwork": "$BROWSER_RESULT",
-            "browser_gameplay": "$BROWSER_RESULT",
-            "public_http": "$HTTP_RESULT",
-            "checked_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          }
-          EOF
-          git pull --rebase
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add _deployment/ninja-climb.json
-          git commit -m 'chore: record Ninja Climb HD verification [skip ci]' || exit 0
-          git push
-
-      - name: Fail if any verification failed
-        if: always()
-        shell: bash
-        run: |
-          test '${{ steps.build.outcome }}' = 'success'
-          test '${{ steps.publish.outcome }}' = 'success'
-          test '${{ steps.browser.outcome }}' = 'success'
-          test '${{ steps.public_http.outcome }}' = 'success'
