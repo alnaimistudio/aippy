@@ -1,0 +1,36 @@
+---
+# Aippy Matrix messenger - deployment overlay
+# Copy into matrix-messenger/deploy/inventory/host_vars/matrix.YOUR_DOMAIN/vars.yml
+# and replace example.com values before deploying.
+
+matrix_playbook_migration_validated_version: v2026.05.18.0
+
+# User IDs become @username:example.com. No phone number is required.
+matrix_domain: "example.com"
+matrix_server_fqn_matrix: "matrix.example.com"
+matrix_server_fqn_element: "chat.example.com"
+
+# Core homeserver and production web client.
+matrix_homeserver_implementation: synapse
+matrix_client_element_enabled: true
+
+# Allow username/password registration without phone verification.
+# For a public service, registration tokens or another anti-abuse control are recommended.
+matrix_synapse_enable_registration: true
+matrix_synapse_enable_registration_without_verification: true
+matrix_synapse_disable_msisdn_registration: true
+matrix_synapse_registrations_require_3pid: []
+
+# Modern Element X / Element Web calling stack (LiveKit + JWT service).
+matrix_rtc_enabled: true
+
+# Optional standalone Element Call web UI. Element Web and Element X already embed it.
+matrix_element_call_enabled: false
+
+# Useful administration UI.
+matrix_synapse_admin_enabled: true
+
+# Keep federation enabled unless you intentionally want a private-only Matrix island.
+# matrix_homeserver_federation_enabled: false
+
+# IMPORTANT: Put real secrets only in the private server inventory, never in this public repo.
