@@ -11,10 +11,17 @@
   "show_labs_settings": true,
   "default_country_code": "QA",
   "brand": "Element",
+  "mobile_guide_toast": false,
+  "mobile_builds": {
+    "ios": null,
+    "android": null,
+    "fdroid": null
+  },
   "setting_defaults": {
     "UIFeature.registration": true,
     "UIFeature.passwordReset": true,
     "UIFeature.identityServer": false,
-    "UIFeature.shareQrCode": true
+    "UIFeature.shareQrCode": true,
+    "UIFeature.voip": true
   }
 }
