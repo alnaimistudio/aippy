@@ -1,0 +1,59 @@
+name: Secure Chat Smoke Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'secure-chat/**'
+      - '.github/workflows/secure-chat-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Static checks
+        run: |
+          set -euo pipefail
+          test -s secure-chat/index.html
+          test -s secure-chat/styles.css
+          test -s secure-chat/app.js
+          node --check secure-chat/app.js
+          grep -q 'End-to-end encrypted messages' secure-chat/app.js
+          grep -q 'AES-GCM' secure-chat/app.js
+          grep -q 'ECDH' secure-chat/app.js
+
+      - name: Browser smoke test
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8080 >/tmp/secure-chat-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          mkdir -p /tmp/pw
+          npm install --prefix /tmp/pw --no-save playwright@1.55.0 >/dev/null 2>&1
+          /tmp/pw/node_modules/.bin/playwright install chromium >/dev/null 2>&1
+          NODE_PATH=/tmp/pw/node_modules node <<'JS'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+            const errors = [];
+            page.on('pageerror', e => errors.push(e.message));
+            await page.goto('http://127.0.0.1:8080/secure-chat/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await page.locator('#myPeerId').waitFor({ state: 'visible' });
+            await page.waitForFunction(() => {
+              const t = document.getElementById('myPeerId')?.textContent || '';
+              return t && !t.includes('Generating') && !t.includes('Unable');
+            }, null, { timeout: 30000 });
+            if (errors.length) throw new Error(errors.join(' | '));
+            console.log('SECURE_CHAT_BROWSER_OK');
+            await browser.close();
+          })().catch(err => { console.error(err); process.exit(1); });
+          JS
