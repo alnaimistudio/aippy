@@ -1,0 +1,114 @@
+name: Deploy Matrix Element Demo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-matrix-demo.yml'
+      - 'matrix-messenger/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: matrix-element-demo
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download latest official Element Web release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/element-download /tmp/element-dist
+          RELEASE_JSON=$(curl -fsSL https://api.github.com/repos/element-hq/element-web/releases/latest)
+          URL=$(printf '%s' "$RELEASE_JSON" | jq -r '.assets[] | select(.name | test("\\.tar\\.gz$")) | .browser_download_url' | head -n1)
+          if [ -z "$URL" ] || [ "$URL" = "null" ]; then
+            echo "Could not locate Element Web release tarball" >&2
+            exit 1
+          fi
+          echo "Downloading $URL"
+          curl -fL "$URL" -o /tmp/element-download/element.tar.gz
+          tar -xzf /tmp/element-download/element.tar.gz -C /tmp/element-download
+          ROOT=$(find /tmp/element-download -mindepth 1 -maxdepth 2 -type f -name index.html -printf '%h\n' | head -n1)
+          if [ -z "$ROOT" ]; then
+            echo "Element Web index.html not found after extraction" >&2
+            exit 1
+          fi
+          cp -a "$ROOT"/. /tmp/element-dist/
+          test -s /tmp/element-dist/index.html
+
+      - name: Configure public Matrix demo
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/element-dist/config.json <<'JSON'
+          {
+            "default_server_config": {
+              "m.homeserver": {
+                "base_url": "https://matrix-client.matrix.org",
+                "server_name": "matrix.org"
+              }
+            },
+            "disable_custom_urls": true,
+            "disable_guests": false,
+            "disable_login_language_selector": false,
+            "show_labs_settings": true,
+            "default_country_code": "QA",
+            "brand": "Element",
+            "setting_defaults": {
+              "UIFeature.registration": true,
+              "UIFeature.passwordReset": true,
+              "UIFeature.identityServer": false,
+              "UIFeature.shareQrCode": true
+            }
+          }
+          JSON
+          touch /tmp/element-dist/.nojekyll
+
+      - name: Publish under gh-pages without touching existing games
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch origin gh-pages
+          rm -rf /tmp/aippy-pages
+          git worktree add /tmp/aippy-pages origin/gh-pages
+          cd /tmp/aippy-pages
+          git switch -C gh-pages
+          rm -rf matrix-messenger-demo
+          mkdir -p matrix-messenger-demo
+          cp -a /tmp/element-dist/. matrix-messenger-demo/
+          cat > matrix-messenger-demo/README.txt <<'TXT'
+          Official Element Web build configured for the public matrix.org homeserver.
+          Demo features include Matrix username accounts, end-to-end encrypted messaging,
+          media/files, voice messages and supported voice/video calls.
+          TXT
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add matrix-messenger-demo
+          if git diff --cached --quiet; then
+            echo "No deployment changes"
+          else
+            git commit -m "Deploy official Element Web Matrix demo"
+            git push origin gh-pages
+          fi
+
+      - name: Smoke test deployed files in branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s /tmp/aippy-pages/matrix-messenger-demo/index.html
+          test -s /tmp/aippy-pages/matrix-messenger-demo/config.json
+          grep -q 'matrix-client.matrix.org' /tmp/aippy-pages/matrix-messenger-demo/config.json
+          echo 'MATRIX_DEMO_FILES_OK'
