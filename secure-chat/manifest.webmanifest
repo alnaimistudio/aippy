@@ -1,0 +1,10 @@
+{
+  "name": "Secure Chat",
+  "short_name": "Secure Chat",
+  "description": "Browser-based encrypted peer-to-peer chat and audio calling prototype.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b141a",
+  "theme_color": "#0b141a"
+}
