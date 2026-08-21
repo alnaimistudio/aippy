@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b141a" />
+  <title>Secure Chat</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">S</div>
+        <div>
+          <h1>Secure Chat</h1>
+          <p id="connectionStatus">Starting…</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="muteBtn" class="icon-btn hidden" title="Mute microphone" aria-label="Mute microphone">🎙️</button>
+        <button id="callBtn" class="icon-btn" title="Start audio call" aria-label="Start audio call" disabled>📞</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="setupView" class="setup-view">
+        <div class="setup-card">
+          <div class="lock-badge">🔐</div>
+          <h2>Private browser chat</h2>
+          <p class="muted">Messages are encrypted in your browser before they are sent. Audio calls use encrypted peer-to-peer WebRTC media.</p>
+
+          <label for="displayName">Your name</label>
+          <input id="displayName" maxlength="30" placeholder="e.g. Mohammed" autocomplete="name" />
+
+          <div class="identity-box">
+            <span class="label">Your connection ID</span>
+            <div class="identity-row">
+              <code id="myPeerId">Generating…</code>
+              <button id="copyIdBtn" class="small-btn">Copy</button>
+            </div>
+          </div>
+
+          <div class="divider"><span>Connect to someone</span></div>
+
+          <label for="remotePeerId">Their connection ID</label>
+          <input id="remotePeerId" placeholder="Paste their ID" autocapitalize="none" autocomplete="off" spellcheck="false" />
+          <button id="connectBtn" class="primary-btn" disabled>Connect securely</button>
+
+          <p class="privacy-note">For testing only. This prototype has not received an independent security audit.</p>
+        </div>
+      </section>
+
+      <section id="chatView" class="chat-view hidden">
+        <div class="chat-meta">
+          <div>
+            <strong id="peerLabel">Connected user</strong>
+            <span id="secureState" class="secure-pill pending">Negotiating encryption…</span>
+          </div>
+          <button id="disconnectBtn" class="text-btn">Disconnect</button>
+        </div>
+
+        <div id="messages" class="messages" aria-live="polite">
+          <div class="system-message">Connection established. Waiting for end-to-end encryption keys…</div>
+        </div>
+
+        <form id="messageForm" class="composer">
+          <textarea id="messageInput" rows="1" maxlength="4000" placeholder="Message" disabled></textarea>
+          <button id="sendBtn" type="submit" class="send-btn" disabled aria-label="Send message">➤</button>
+        </form>
+      </section>
+    </main>
+
+    <div id="callOverlay" class="call-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="callTitle">
+      <div class="call-avatar">♪</div>
+      <h2 id="callTitle">Audio call</h2>
+      <p id="callState">Connecting…</p>
+      <div class="call-controls">
+        <button id="overlayMuteBtn" class="round-btn" aria-label="Mute microphone">🎙️</button>
+        <button id="hangupBtn" class="round-btn danger" aria-label="End call">☎</button>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden" role="status"></div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
