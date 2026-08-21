@@ -1,0 +1,21 @@
+[submodule "matrix-messenger/deploy"]
+	path = matrix-messenger/deploy
+	url = https://github.com/spantaleev/matrix-docker-ansible-deploy.git
+[submodule "matrix-messenger/server/synapse"]
+	path = matrix-messenger/server/synapse
+	url = https://github.com/element-hq/synapse.git
+[submodule "matrix-messenger/clients/element-web"]
+	path = matrix-messenger/clients/element-web
+	url = https://github.com/element-hq/element-web.git
+[submodule "matrix-messenger/clients/element-x-ios"]
+	path = matrix-messenger/clients/element-x-ios
+	url = https://github.com/element-hq/element-x-ios.git
+[submodule "matrix-messenger/clients/element-x-android"]
+	path = matrix-messenger/clients/element-x-android
+	url = https://github.com/element-hq/element-x-android.git
+[submodule "matrix-messenger/calling/element-call"]
+	path = matrix-messenger/calling/element-call
+	url = https://github.com/element-hq/element-call.git
+[submodule "matrix-messenger/sdk/matrix-rust-sdk"]
+	path = matrix-messenger/sdk/matrix-rust-sdk
+	url = https://github.com/matrix-org/matrix-rust-sdk.git
