@@ -1,0 +1,9 @@
+{
+  "name": "AIPPY Chat",
+  "short_name": "AIPPY Chat",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#06111f",
+  "theme_color": "#071426",
+  "description": "Interactive AIPPY Chat messenger mockup with no backend."
+}
