@@ -1,0 +1,4 @@
+Tinode official source snapshot
+Server: https://github.com/tinode/chat tag v0.25.3
+Web app: https://github.com/tinode/webapp tag v0.25.3
+Imported automatically from the official Tinode repositories.
