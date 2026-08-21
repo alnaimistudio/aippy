@@ -1,0 +1,22 @@
+---
+# Optional self-hosted push gateway for custom Element X builds.
+# Do NOT commit real APNs/FCM secrets to this public repository.
+
+matrix_sygnal_enabled: true
+matrix_sygnal_hostname: "matrix.example.com"
+matrix_sygnal_path_prefix: /sygnal
+
+# Replace bundle IDs and credentials before deployment.
+matrix_sygnal_apps:
+  com.example.aippy.ios:
+    type: apns
+    keyfile: /data/AuthKey_REPLACE_ME.p8
+    key_id: REPLACE_ME
+    team_id: REPLACE_ME
+    topic: com.example.aippy.ios
+  com.example.aippy.android:
+    type: gcm
+    api_key: REPLACE_WITH_FCM_SERVER_KEY
+
+# Add the APNs key as a protected secret/file on the deployment server.
+# Never paste it into this repository.
