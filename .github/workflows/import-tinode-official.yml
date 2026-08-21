@@ -1,0 +1,53 @@
+name: Import Official Tinode
+
+on:
+  push:
+    paths:
+      - '.github/workflows/import-tinode-official.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout aippy
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download official Tinode v0.25.3 sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/tinode-chat /tmp/tinode-webapp
+          git clone --depth 1 --branch v0.25.3 https://github.com/tinode/chat.git /tmp/tinode-chat
+          git clone --depth 1 --branch v0.25.3 https://github.com/tinode/webapp.git /tmp/tinode-webapp
+
+          rm -rf tinode/official
+          mkdir -p tinode/official/server tinode/official/webapp
+          rsync -a --exclude='.git' /tmp/tinode-chat/ tinode/official/server/
+          rsync -a --exclude='.git' /tmp/tinode-webapp/ tinode/official/webapp/
+
+          cat > tinode/UPSTREAM.txt <<'EOF'
+          Tinode official source snapshot
+          Server: https://github.com/tinode/chat tag v0.25.3
+          Web app: https://github.com/tinode/webapp tag v0.25.3
+          Imported automatically from the official Tinode repositories.
+          EOF
+
+      - name: Commit imported source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tinode/official tinode/UPSTREAM.txt
+          if git diff --cached --quiet; then
+            echo "Tinode source is already up to date."
+          else
+            git commit -m "Import official Tinode v0.25.3 source"
+            git push
+          fi
