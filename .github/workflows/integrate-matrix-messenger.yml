@@ -1,0 +1,62 @@
+name: Integrate Matrix Messenger Stack
+
+on:
+  push:
+    paths:
+      - '.github/workflows/integrate-matrix-messenger.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Aippy
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Attach official open-source messenger components
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          add_module() {
+            url="$1"
+            path="$2"
+            if git config -f .gitmodules --get-regexp "^submodule\\..*\\.path$" 2>/dev/null | grep -Fq " $path"; then
+              git submodule sync -- "$path"
+              git submodule update --init --remote --depth 1 "$path"
+            else
+              rm -rf "$path"
+              git submodule add --depth 1 "$url" "$path"
+            fi
+          }
+
+          add_module https://github.com/spantaleev/matrix-docker-ansible-deploy.git matrix-messenger/deploy
+          add_module https://github.com/element-hq/synapse.git matrix-messenger/server/synapse
+          add_module https://github.com/element-hq/element-web.git matrix-messenger/clients/element-web
+          add_module https://github.com/element-hq/element-x-ios.git matrix-messenger/clients/element-x-ios
+          add_module https://github.com/element-hq/element-x-android.git matrix-messenger/clients/element-x-android
+          add_module https://github.com/element-hq/element-call.git matrix-messenger/calling/element-call
+          add_module https://github.com/matrix-org/matrix-rust-sdk.git matrix-messenger/sdk/matrix-rust-sdk
+
+      - name: Commit pinned upstream revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add .gitmodules matrix-messenger
+          if git diff --cached --quiet; then
+            echo "Matrix messenger stack already current."
+          else
+            git commit -m "Integrate Matrix Element encrypted messenger stack"
+            git push
+          fi
